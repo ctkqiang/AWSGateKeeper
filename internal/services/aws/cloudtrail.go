@@ -23,6 +23,7 @@ package aws
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -31,12 +32,38 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudtrail/types"
 )
 
+const (
+	IAMEventSource     = "iam.amazonaws.com"
+	CognitoEventSource = "cognito-idp.amazonaws.com"
+)
+
 // TrailClient wraps the CloudTrail SDK client and provides
 // audit-rule-specific lookup methods.
 //
 //	@see rules/projcect.md for the two audit rules this client supports
 type TrailClient struct {
 	client *cloudtrail.Client
+}
+
+type CloudTrailEvent struct {
+	Version    string    `json:"version"`
+	ID         string    `json:"id"`
+	DetailType string    `json:"detail-type"`
+	Source     string    `json:"source"`
+	Account    string    `json:"account"`
+	Time       time.Time `json:"time"`
+	Region     string    `json:"region"`
+	Resources  []string  `json:"resources"`
+	Detail     struct {
+		EventName    string `json:"eventName"`
+		UserIdentity struct {
+			UserName string `json:"userName"`
+			Arn      string `json:"arn"`
+		} `json:"userIdentity"`
+		RequestParameters map[string]interface{} `json:"requestParameters"`
+		ResponseElements  map[string]interface{} `json:"responseElements"`
+		EventSource       string                 `json:"eventSource"`
+	} `json:"detail"`
 }
 
 // NewTrailClient creates a TrailClient from an existing AWS SDK config.
@@ -51,11 +78,17 @@ func NewTrailClient(cfg aws_sdk.Config) *TrailClient {
 
 // EventSummary is a flattened representation of a CloudTrail event,
 // containing only the fields relevant to audit-rule evaluation.
+//
+// The SourceIP field is critical for security auditing — it reveals the
+// caller's origin and can be used to detect calls from untrusted networks
+// (a key indicator in the confused-deputy and external-user audit rules).
 type EventSummary struct {
 	EventID   string    // CloudTrail event ID
 	EventName string    // API action, e.g. "CreateRole", "AssumeRole"
 	EventTime time.Time // when the event occurred (UTC)
 	UserARN   string    // the IAM entity that performed the action
+	SourceIP  string    // caller's IP address (e.g. "115.164.210.127")
+	AccessKey string    // AWS access key used for the call (ASIA... = STS temporary)
 	Resources []string  // ARNs of resources touched by the event
 	RawEvent  string    // full CloudTrail event JSON for detailed inspection
 }
@@ -71,7 +104,7 @@ type EventSummary struct {
 //	@return        deduplicated list of IAM events, newest first
 //	@return        non-nil if the CloudTrail LookupEvents call fails
 func (c *TrailClient) LookupIAMEvents(ctx context.Context, hours int) ([]EventSummary, error) {
-	return c.lookup(ctx, "iam.amazonaws.com", time.Now().UTC().Add(-time.Duration(hours)*time.Hour))
+	return c.lookup(ctx, IAMEventSource, time.Now().UTC().Add(-time.Duration(hours)*time.Hour))
 }
 
 // LookupCognitoEvents retrieves Cognito-related CloudTrail events from
@@ -85,7 +118,7 @@ func (c *TrailClient) LookupIAMEvents(ctx context.Context, hours int) ([]EventSu
 //	@return        deduplicated list of Cognito events, newest first
 //	@return        non-nil if the CloudTrail LookupEvents call fails
 func (c *TrailClient) LookupCognitoEvents(ctx context.Context, hours int) ([]EventSummary, error) {
-	return c.lookup(ctx, "cognito-idp.amazonaws.com", time.Now().UTC().Add(-time.Duration(hours)*time.Hour))
+	return c.lookup(ctx, CognitoEventSource, time.Now().UTC().Add(-time.Duration(hours)*time.Hour))
 }
 
 // lookup performs a paginated CloudTrail LookupEvents call filtered by
@@ -132,6 +165,8 @@ func (c *TrailClient) lookup(ctx context.Context, src string, startTime time.Tim
 				EventName: aws_sdk.ToString(ev.EventName),
 				EventTime: aws_sdk.ToTime(ev.EventTime),
 				UserARN:   aws_sdk.ToString(ev.Username),
+				SourceIP:  extractSourceIP(aws_sdk.ToString(ev.CloudTrailEvent)),
+				AccessKey: aws_sdk.ToString(ev.AccessKeyId),
 				Resources: resourceARNs(ev.Resources),
 				RawEvent:  aws_sdk.ToString(ev.CloudTrailEvent),
 			})
@@ -142,6 +177,9 @@ func (c *TrailClient) lookup(ctx context.Context, src string, startTime time.Tim
 }
 
 // resourceARNs extracts ARN strings from a CloudTrail resource list.
+//
+//	@param  resources  CloudTrail resource list
+//	@return            list of ARN strings
 func resourceARNs(resources []types.Resource) []string {
 	arns := make([]string, 0, len(resources))
 
@@ -152,4 +190,26 @@ func resourceARNs(resources []types.Resource) []string {
 	}
 
 	return arns
+}
+
+// extractSourceIP parses the sourceIPAddress field from a raw CloudTrail
+// event JSON string.  The SDK's Event struct does not surface this field
+// directly — it is only available inside the embedded CloudTrailEvent
+// payload.
+//
+// Returns the IP string (e.g. "115.164.210.127") or "" on parse failure.
+func extractSourceIP(rawEvent string) string {
+	if rawEvent == "" {
+		return ""
+	}
+
+	var payload struct {
+		SourceIPAddress string `json:"sourceIPAddress"`
+	}
+
+	if err := json.Unmarshal([]byte(rawEvent), &payload); err != nil {
+		return ""
+	}
+
+	return payload.SourceIPAddress
 }
