@@ -160,3 +160,9 @@ func (l *S3AuditLogger) WriteBatchAuditEvents(events []model.AuditEvent) error {
 
 	return nil
 }
+
+func InitAthenaClient() {
+	// List the bucketname `/governance-and-audit/`
+	// if no create one then return ,
+	// if exsit then return
+}

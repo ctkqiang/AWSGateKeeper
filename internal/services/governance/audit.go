@@ -1,102 +1,53 @@
-// Package governance provides audit logging for security-sensitive actions.
+// Package governance provides audit logging for security-sensitive
+// application-level actions.
 //
-// Audit events are serialised as newline-delimited JSON and written to the
-// configured output destination.  The package supports two deployment modes:
+// Two complementary audit layers exist in this project:
 //
-//  1. Lambda / CloudWatch (default)
-//     Events are written to os.Stdout and captured by the Lambda runtime,
-//     which forwards them to CloudWatch Logs.  This is the zero-config
-//     path — nothing else is needed.
+//  1. Application audit (this package)
+//     Writes structured JSON events to os.Stdout, captured by the Lambda
+//     runtime and forwarded to CloudWatch Logs.  Use LogSuccessfulAction
+//     and LogFailedAction for business-level events (role assumption,
+//     policy changes, user access decisions).
 //
-//  2. S3 → Glacier archival (recommended for long-term retention)
-//     Events are uploaded to S3 via [S3AuditLogger] in the sibling
-//     [aws] package.  An S3 Lifecycle Rule then transitions objects to
-//     the GLACIER or DEEP_ARCHIVE storage class after a configurable
-//     number of days.  This satisfies compliance requirements
-//     (SOC 2, PCI-DSS, HIPAA) that mandate multi-year audit retention
-//     at minimal cost.
+//  2. Infrastructure audit (CloudTrail — automatic)
+//     Every AWS API call is captured by CloudTrail without any application
+//     code.  IAM role creation, trust-policy updates, Cognito group
+//     membership changes — CloudTrail records Who, What, When, and
+//     Where for every action.  The [aws.TrailClient] in the sibling
+//     [aws] package provides programmatic lookup of CloudTrail events
+//     for audit-rule evaluation.
 //
-// # S3 Glacier Integration
+//     A CloudTrail trail delivers logs to S3, where a Lifecycle Rule
+//     transitions them to Glacier for long-term retention (7 years by
+//     default).  This satisfies SOC 2, PCI-DSS, and HIPAA compliance
+//     at near-zero operational cost.
 //
-// Audit events flow to Glacier through an S3 Lifecycle Rule — no
-// application code touches the Glacier API directly.  Objects are
-// uploaded to S3 in the STANDARD tier and automatically transitioned
-// to lower-cost storage classes over time.
+// # CloudTrail Lookup — Usage
 //
-// ## Environment variables
+// Query IAM events from the last 24 hours:
 //
-//	AUDIT_S3_BUCKET=my-company-audit-logs   # required
-//	AUDIT_S3_PREFIX=production/audit        # optional (defaults to "audit-logs")
-//	AWS_REGION=ap-east-1                    # optional
-//
-// ## S3 Lifecycle Policy (JSON)
-//
-// Apply once via the AWS Console, Terraform, or CloudFormation:
-//
-//	{
-//	  "Rules": [{
-//	    "ID": "transition-audit-logs-to-glacier",
-//	    "Status": "Enabled",
-//	    "Filter": { "Prefix": "production/audit/" },
-//	    "Transitions": [
-//	      { "Days": 90,  "StorageClass": "GLACIER_IR" },
-//	      { "Days": 365, "StorageClass": "DEEP_ARCHIVE" }
-//	    ],
-//	    "NoncurrentVersionTransitions": [
-//	      { "NoncurrentDays": 30, "StorageClass": "GLACIER_IR" }
-//	    ],
-//	    "Expiration": { "Days": 2555 }
-//	  }]
-//	}
-//
-// GLACIER_IR (Instant Retrieval) is preferred for audit logs —
-// millisecond retrieval when you need to query historical events.
-// DEEP_ARCHIVE suits logs older than one year that must be kept
-// but are rarely accessed.
-//
-// ## Initialisation
-//
-//	s3Logger, err := aws.NewS3AuditLogger()
+//	client := aws.NewTrailClient(cfg)
+//	events, err := client.LookupIAMEvents(ctx, 24)
 //	if err != nil {
-//	    log.Fatalf("S3 audit logger: %v", err)
+//	    log.Fatalf("cloudtrail: %v", err)
+//	}
+//	for _, ev := range events {
+//	    fmt.Printf("%s %s %s\n", ev.EventTime, ev.EventName, ev.UserARN)
 //	}
 //
-// ## Writing events (dual-write pattern)
+// Query Cognito events from the last 1 hour:
 //
-//	event := model.AuditEvent{
-//	    Action:         "AssumeRole",
-//	    UserIdentifier: "AIDAUCRXCBPWFRLYNSASR",
-//	    WasSuccessful:  true,
-//	    HumanMessage:   "Security analyst assumed the SOC role",
-//	}
+//	events, err := client.LookupCognitoEvents(ctx, 1)
 //
-//	// Real-time visibility via CloudWatch
-//	governance.LogSuccessfulAction(
-//	    event.Action, event.UserIdentifier, "",
-//	    event.HumanMessage, nil,
-//	)
+// # Best Practices
 //
-//	// Long-term archival via S3 → Glacier
-//	if err := s3Logger.WriteAuditEvent(event); err != nil {
-//	    log.Printf("S3 audit write failed: %v", err)
-//	    // Never fail the caller — CloudWatch already captured the event.
-//	}
-//
-// ## Querying archived events
-//
-// Objects in Glacier must be restored before reading (minutes for
-// GLACIER_IR, hours for DEEP_ARCHIVE).  Query STANDARD-tier objects
-// (< 90 days) with Athena; older objects require RestoreObject first.
-//
-// ## Best Practices
-//
-//   - Dual-write: stdout for real-time visibility, S3 for durable
-//     long-term retention.  Never sacrifice availability for auditing.
-//   - Tag S3 objects with account ID and environment for cost allocation.
-//   - Enable SSE-S3 or SSE-KMS on the bucket — audit logs carry
-//     user identifiers and resource ARNs.
-//   - Enable S3 Object Lock in Compliance mode if your regulatory
-//     framework requires WORM storage.
+//   - Let CloudTrail own the AWS-level audit trail — never manually log
+//     API calls.  The governance logger is for application-level context
+//     only.
+//   - Keep CloudTrail logs in a dedicated S3 bucket with SSE-KMS
+//     encryption and Object Lock (Compliance mode) for WORM storage.
+//   - Use CloudTrail Lake for SQL-based queries across months or years
+//     of historical data without restoring from Glacier.
 package governance
 
 import (
