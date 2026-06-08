@@ -1,13 +1,13 @@
-// Package aws (lambda.go) provides the HTTP-to-Lambda bridge.  Two
-// complementary entry points are exposed:
+// Package aws (lambda.go) provides the HTTP-to-Lambda bridge.
 //
-//	ServeLambdaEndpoint      —  local dev server or Lambda via httpadapter
-//	HandleAPIGatewayEvent    —  direct Lambda handler for API Gateway proxy
-//	                          events without the adapter layer
+// Two execution modes share a single entry point:
 //
-// In Lambda the `_LAMBDA_SERVER_PORT` and `AWS_LAMBDA_RUNTIME_API`
-// environment variables are set by the runtime; their presence determines
-// which code path is taken at startup.
+//	Local development  —  net/http server on 0.0.0.0:8080
+//	AWS Lambda         —  lambda.Start(HandleAPIGatewayEvent)
+//
+// The `_LAMBDA_SERVER_PORT` and `AWS_LAMBDA_RUNTIME_API` environment
+// variables are set by the Lambda runtime; their presence determines
+// which mode [ServeLambdaEndpoint] operates in.
 package aws
 
 import (
@@ -20,10 +20,11 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	aws_lambda_http "github.com/aws/aws-lambda-go/lambda"
-	aws_lambda_http_adapter "github.com/awslabs/aws-lambda-go-api-proxy/httpadapter"
 )
 
 const (
@@ -72,6 +73,8 @@ func newResponseRecorder() *responseRecorder {
 }
 
 // Header returns the response header map.
+//
+//	@return  response header map
 func (r *responseRecorder) Header() http.Header { return r.header }
 
 // Write appends data to the response body.  If WriteHeader has not been
@@ -81,6 +84,8 @@ func (r *responseRecorder) Write(b []byte) (int, error) {
 }
 
 // WriteHeader records the HTTP status code for the response.
+//
+//	@param  code  HTTP status code
 func (r *responseRecorder) WriteHeader(code int) { r.statusCode = code }
 
 // ServeLambdaEndpoint starts an HTTP handler that, depending on the
@@ -99,25 +104,46 @@ func (r *responseRecorder) WriteHeader(code int) { r.statusCode = code }
 func ServeLambdaEndpoint() error {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc(IndexPath, routes.Index)
-	mux.HandleFunc(HealthPath, routes.Health)
-
-	adapter := aws_lambda_http_adapter.New(mux)
-	if adapter == nil {
-		return fmt.Errorf("lambda: failed to create httpadapter")
-	}
+	mux.HandleFunc(IndexPath, logRequest(routes.Index))
+	mux.HandleFunc(HealthPath, logRequest(routes.Health))
 
 	if isLambdaRuntime() {
-		aws_lambda_http.Start(adapter.ProxyWithContext)
+		aws_lambda_http.Start(HandleAPIGatewayEvent)
 		return nil
 	}
 
 	utilities.LogProgress("HTTP", "Starting local HTTP server on %s", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
+
+	// Graceful shutdown on SIGINT / SIGTERM (Ctrl+C, kill, Docker stop).
+	srv := &http.Server{Addr: addr, Handler: mux}
+	go func() {
+		stop := make(chan os.Signal, 1)
+		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+		<-stop
+		utilities.LogProgress("HTTP", "Shutting down gracefully", "signal=%s")
+		srv.Close()
+	}()
+
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		return fmt.Errorf("local server failed: %w", err)
 	}
 
 	return nil
+}
+
+// logRequest wraps an http.HandlerFunc with a request log line printed
+// before the handler executes.
+//
+// Log format:  METHOD /path source=IP:port
+func logRequest(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		utilities.LogProgress(
+			"http",
+			r.Method+" "+r.URL.Path,
+			"source=%s", r.RemoteAddr,
+		)
+		next(w, r)
+	}
 }
 
 // isLambdaRuntime reports whether the process is executing inside the AWS
@@ -185,6 +211,13 @@ func HandleAPIGatewayEvent(ctx context.Context, event model.APIGatewayEvent) (ma
 	for k, v := range event.Headers {
 		req.Header.Set(k, v)
 	}
+
+	// Log every incoming request.
+	srcIP := req.Header.Get("X-Forwarded-For")
+	if srcIP == "" {
+		srcIP = req.RemoteAddr
+	}
+	utilities.LogProgress("lambda", req.Method+" "+req.URL.Path, "source=%s", srcIP)
 
 	// Dispatch to the matching route handler.
 	w := newResponseRecorder()
