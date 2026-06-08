@@ -1,11 +1,17 @@
-package services
+package aws
 
 import (
+	"aws_gatekeeper/internal/security"
+	"aws_gatekeeper/internal/utilities"
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
+	aws_v2 "github.com/aws/aws-sdk-go-v2/aws"
 	aws_config "github.com/aws/aws-sdk-go-v2/config"
+	aws_credentials "github.com/aws/aws-sdk-go-v2/credentials"
+	aws_sts "github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
 type Account struct {
@@ -29,13 +35,66 @@ var (
 	globalMu      sync.Mutex
 )
 
-func Init(ctx context.Context) error {
-	// var options []func(*aws_config.LoadOptions) error
+func Initialize(ctx context.Context) error {
+	var options []func(*aws_config.LoadOptions) error
 
-	// globalMu.Lock()
-	// defer globalMu.Unlock()
+	globalMu.Lock()
+	defer globalMu.Unlock()
 
-	// account := &Account{}
+	account := &Account{}
+
+	authKeys, err := security.AWSCredentials()
+	if err != nil {
+		return err
+	}
+
+	options = append(options,
+		aws_config.WithRegion(authKeys.Region),
+		aws_config.WithCredentialsProvider(
+			aws_credentials.NewStaticCredentialsProvider(
+				authKeys.AccessKeyID,
+				authKeys.SecretAccessKey,
+				"", // session token not required for permanent IAM credentials
+			),
+		),
+	)
+
+	awsConfiguration, err := aws_config.LoadDefaultConfig(ctx, options...)
+	if err != nil {
+		account.initErr = fmt.Errorf("failed to load AWS configuration: %w", err)
+		globalAccount = account
+		return account.initErr
+	}
+
+	account.cfg = awsConfiguration
+
+	stsClient := aws_sts.NewFromConfig(awsConfiguration)
+	identity, err := stsClient.GetCallerIdentity(ctx, &aws_sts.GetCallerIdentityInput{})
+	if err != nil {
+		account.initErr = fmt.Errorf("failed to get caller identity: %w", err)
+		globalAccount = account
+		return account.initErr
+	}
+
+	account.identity = CallerIdentity{
+		AccountID:  aws_v2.ToString(identity.Account),
+		ARN:        aws_v2.ToString(identity.Arn),
+		UserID:     aws_v2.ToString(identity.UserId),
+		Verified:   true,
+		VerifiedAt: time.Now(),
+	}
+
+	utilities.LogProgress("aws", "init", "success",
+		fmt.Sprintf("AWS account initialized successfully | account_id=%s user_id=%s arn=%s verified_at=%s",
+			account.identity.AccountID,
+			account.identity.UserID,
+			account.identity.ARN,
+			account.identity.VerifiedAt.Format(time.RFC3339),
+		),
+	)
+
+	account.ready = true
+	globalAccount = account
 
 	return nil
 }
