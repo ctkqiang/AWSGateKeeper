@@ -10,24 +10,33 @@ type Policy struct {
 	Action      Action
 }
 
-// Action groups (service prefixes)
+// Action groups (AWS service prefixes)
 const (
-	EC2          ActionGroup = "ec2"
-	S3           ActionGroup = "s3"
-	IAM          ActionGroup = "iam"
-	Lambda       ActionGroup = "lambda"
-	DynamoDB     ActionGroup = "dynamodb"
-	Logs         ActionGroup = "logs"
-	CloudFront   ActionGroup = "cloudfront"
-	APIGateway   ActionGroup = "apigateway"
-	STS          ActionGroup = "sts"
-	SQS          ActionGroup = "sqs"
-	CloudWatch   ActionGroup = "cloudwatch"
-	Billing      ActionGroup = "aws-portal" // old billing actions
-	CostExplorer ActionGroup = "ce"         // Cost Explorer
+	EC2            ActionGroup = "ec2"
+	S3             ActionGroup = "s3"
+	IAM            ActionGroup = "iam"
+	Lambda         ActionGroup = "lambda"
+	DynamoDB       ActionGroup = "dynamodb"
+	Logs           ActionGroup = "logs"
+	CloudFront     ActionGroup = "cloudfront"
+	APIGateway     ActionGroup = "apigateway"
+	STS            ActionGroup = "sts"
+	SQS            ActionGroup = "sqs"
+	CloudWatch     ActionGroup = "cloudwatch"
+	Billing        ActionGroup = "aws-portal"
+	CostExplorer   ActionGroup = "ce"
+	CloudTrail     ActionGroup = "cloudtrail"
+	GuardDuty      ActionGroup = "guardduty"
+	CodeDeploy     ActionGroup = "codedeploy"
+	CodePipeline   ActionGroup = "codepipeline"
+	CloudFormation ActionGroup = "cloudformation"
+	ECS            ActionGroup = "ecs"
+	ECR            ActionGroup = "ecr"
 )
 
-// EC2 actions
+// Actions (grouped by service)
+
+// EC2
 const (
 	EC2DescribeInstances             Action = "DescribeInstances"
 	EC2RunInstances                  Action = "RunInstances"
@@ -38,7 +47,7 @@ const (
 	EC2AuthorizeSecurityGroupIngress Action = "AuthorizeSecurityGroupIngress"
 )
 
-// S3 actions
+// S3
 const (
 	S3ListBuckets       Action = "ListBuckets"
 	S3GetObject         Action = "GetObject"
@@ -49,7 +58,7 @@ const (
 	S3PutBucketPolicy   Action = "PutBucketPolicy"
 )
 
-// IAM actions
+// IAM
 const (
 	IAMListUsers        Action = "ListUsers"
 	IAMListRoles        Action = "ListRoles"
@@ -59,7 +68,7 @@ const (
 	IAMPassRole         Action = "PassRole"
 )
 
-// Lambda actions
+// Lambda
 const (
 	LambdaInvokeFunction     Action = "InvokeFunction"
 	LambdaCreateFunction     Action = "CreateFunction"
@@ -68,7 +77,7 @@ const (
 	LambdaListFunctions      Action = "ListFunctions"
 )
 
-// DynamoDB actions
+// DynamoDB
 const (
 	DynamoDBGetItem     Action = "GetItem"
 	DynamoDBPutItem     Action = "PutItem"
@@ -79,7 +88,7 @@ const (
 	DynamoDBCreateTable Action = "CreateTable"
 )
 
-// CloudWatch Logs actions
+// CloudWatch Logs
 const (
 	LogsCreateLogGroup     Action = "CreateLogGroup"
 	LogsCreateLogStream    Action = "CreateLogStream"
@@ -90,14 +99,14 @@ const (
 	LogsFilterLogEvents    Action = "FilterLogEvents"
 )
 
-// CloudFront actions
+// CloudFront
 const (
 	CloudFrontGetDistribution    Action = "GetDistribution"
 	CloudFrontCreateInvalidation Action = "CreateInvalidation"
 	CloudFrontListDistributions  Action = "ListDistributions"
 )
 
-// API Gateway actions (note: many are HTTP verbs)
+// API Gateway
 const (
 	APIGatewayGET    Action = "GET"
 	APIGatewayPOST   Action = "POST"
@@ -105,12 +114,12 @@ const (
 	APIGatewayDELETE Action = "DELETE"
 )
 
-// STS actions
+// STS
 const (
 	STSAssumeRole Action = "AssumeRole"
 )
 
-// SQS actions
+// SQS
 const (
 	SQSSendMessage    Action = "SendMessage"
 	SQSReceiveMessage Action = "ReceiveMessage"
@@ -118,7 +127,7 @@ const (
 	SQSCreateQueue    Action = "CreateQueue"
 )
 
-// CloudWatch metrics actions
+// CloudWatch metrics
 const (
 	CloudWatchListMetrics    Action = "ListMetrics"
 	CloudWatchGetMetricData  Action = "GetMetricData"
@@ -126,25 +135,247 @@ const (
 	CloudWatchDescribeAlarms Action = "DescribeAlarms"
 )
 
-// Billing & Cost Explorer actions
+// Billing & Cost Explorer
 const (
 	BillingViewBilling          Action = "ViewBilling"
 	BillingViewUsage            Action = "ViewUsage"
 	CostExplorerGetCostAndUsage Action = "GetCostAndUsage"
 )
 
-// FullActions returns a list of full action strings (e.g., "ec2:DescribeInstances")
-// for the given policies.
-//
-// @return []string
-// @param policies []Policy
-// @description A list of AWS policies to convert to full action strings.
-func FullActions(policies []Policy) []string {
-	out := make([]string, len(policies))
+// CloudTrail
+const (
+	CloudTrailLookupEvents      Action = "LookupEvents"
+	CloudTrailDescribeTrails    Action = "DescribeTrails"
+	CloudTrailGetTrailStatus    Action = "GetTrailStatus"
+	CloudTrailGetEventSelectors Action = "GetEventSelectors"
+	CloudTrailCreateTrail       Action = "CreateTrail"
+)
 
-	for i, p := range policies {
-		out[i] = string(p.ActionGroup) + ":" + string(p.Action)
+// GuardDuty
+const (
+	GuardDutyListFindings    Action = "ListFindings"
+	GuardDutyGetFindings     Action = "GetFindings"
+	GuardDutyListDetectors   Action = "ListDetectors"
+	GuardDutyArchiveFindings Action = "ArchiveFindings"
+	GuardDutyCreateDetector  Action = "CreateDetector"
+)
+
+// CodeDeploy
+const (
+	CodeDeployListApplications Action = "ListApplications"
+	CodeDeployGetApplication   Action = "GetApplication"
+	CodeDeployCreateDeployment Action = "CreateDeployment"
+	CodeDeployListDeployments  Action = "ListDeployments"
+	CodeDeployGetDeployment    Action = "GetDeployment"
+)
+
+// CodePipeline
+const (
+	CodePipelineListPipelines          Action = "ListPipelines"
+	CodePipelineGetPipeline            Action = "GetPipeline"
+	CodePipelineStartPipelineExecution Action = "StartPipelineExecution"
+	CodePipelineGetPipelineExecution   Action = "GetPipelineExecution"
+)
+
+// CloudFormation
+const (
+	CloudFormationListStacks          Action = "ListStacks"
+	CloudFormationDescribeStacks      Action = "DescribeStacks"
+	CloudFormationCreateStack         Action = "CreateStack"
+	CloudFormationUpdateStack         Action = "UpdateStack"
+	CloudFormationDeleteStack         Action = "DeleteStack"
+	CloudFormationDescribeStackEvents Action = "DescribeStackEvents"
+)
+
+// ECS
+const (
+	ECSListClusters     Action = "ListClusters"
+	ECSDescribeClusters Action = "DescribeClusters"
+	ECSListServices     Action = "ListServices"
+	ECSDescribeServices Action = "DescribeServices"
+	ECSRunTask          Action = "RunTask"
+	ECSDescribeTasks    Action = "DescribeTasks"
+)
+
+// ECR
+const (
+	ECRDescribeRepositories  Action = "DescribeRepositories"
+	ECRListImages            Action = "ListImages"
+	ECRDescribeImages        Action = "DescribeImages"
+	ECRGetAuthorizationToken Action = "GetAuthorizationToken"
+	ECRBatchGetImage         Action = "BatchGetImage"
+)
+
+// Action group registry.
+var groupActions = map[ActionGroup][]Action{
+	EC2: {
+		EC2DescribeInstances,
+		EC2RunInstances,
+		EC2TerminateInstances,
+		EC2StartInstances,
+		EC2StopInstances,
+		EC2CreateSecurityGroup,
+		EC2AuthorizeSecurityGroupIngress,
+	},
+	S3: {
+		S3ListBuckets,
+		S3GetObject,
+		S3PutObject,
+		S3DeleteObject,
+		S3CopyObject,
+		S3GetBucketLocation,
+		S3PutBucketPolicy,
+	},
+	IAM: {
+		IAMListUsers,
+		IAMListRoles,
+		IAMCreateRole,
+		IAMAttachRolePolicy,
+		IAMPutRolePolicy,
+		IAMPassRole,
+	},
+	Lambda: {
+		LambdaInvokeFunction,
+		LambdaCreateFunction,
+		LambdaUpdateFunctionCode,
+		LambdaGetFunction,
+		LambdaListFunctions,
+	},
+	DynamoDB: {
+		DynamoDBGetItem,
+		DynamoDBPutItem,
+		DynamoDBUpdateItem,
+		DynamoDBDeleteItem,
+		DynamoDBQuery,
+		DynamoDBScan,
+		DynamoDBCreateTable,
+	},
+	Logs: {
+		LogsCreateLogGroup,
+		LogsCreateLogStream,
+		LogsPutLogEvents,
+		LogsDescribeLogGroups,
+		LogsDescribeLogStreams,
+		LogsGetLogEvents,
+		LogsFilterLogEvents,
+	},
+	CloudFront: {
+		CloudFrontGetDistribution,
+		CloudFrontCreateInvalidation,
+		CloudFrontListDistributions,
+	},
+	APIGateway: {
+		APIGatewayGET,
+		APIGatewayPOST,
+		APIGatewayPUT,
+		APIGatewayDELETE,
+	},
+	STS: {
+		STSAssumeRole,
+	},
+	SQS: {
+		SQSSendMessage,
+		SQSReceiveMessage,
+		SQSDeleteMessage,
+		SQSCreateQueue,
+	},
+	CloudWatch: {
+		CloudWatchListMetrics,
+		CloudWatchGetMetricData,
+		CloudWatchPutMetricData,
+		CloudWatchDescribeAlarms,
+	},
+	Billing: {
+		BillingViewBilling,
+		BillingViewUsage,
+	},
+	CostExplorer: {
+		CostExplorerGetCostAndUsage,
+	},
+	CloudTrail: {
+		CloudTrailLookupEvents,
+		CloudTrailDescribeTrails,
+		CloudTrailGetTrailStatus,
+		CloudTrailGetEventSelectors,
+		CloudTrailCreateTrail,
+	},
+	GuardDuty: {
+		GuardDutyListFindings,
+		GuardDutyGetFindings,
+		GuardDutyListDetectors,
+		GuardDutyArchiveFindings,
+		GuardDutyCreateDetector,
+	},
+	CodeDeploy: {
+		CodeDeployListApplications,
+		CodeDeployGetApplication,
+		CodeDeployCreateDeployment,
+		CodeDeployListDeployments,
+		CodeDeployGetDeployment,
+	},
+	CodePipeline: {
+		CodePipelineListPipelines,
+		CodePipelineGetPipeline,
+		CodePipelineStartPipelineExecution,
+		CodePipelineGetPipelineExecution,
+	},
+	CloudFormation: {
+		CloudFormationListStacks,
+		CloudFormationDescribeStacks,
+		CloudFormationCreateStack,
+		CloudFormationUpdateStack,
+		CloudFormationDeleteStack,
+		CloudFormationDescribeStackEvents,
+	},
+	ECS: {
+		ECSListClusters,
+		ECSDescribeClusters,
+		ECSListServices,
+		ECSDescribeServices,
+		ECSRunTask,
+		ECSDescribeTasks,
+	},
+	ECR: {
+		ECRDescribeRepositories,
+		ECRListImages,
+		ECRDescribeImages,
+		ECRGetAuthorizationToken,
+		ECRBatchGetImage,
+	},
+}
+
+// FullAction returns the fully qualified AWS action string, e.g.
+// "ec2:DescribeInstances".
+func (p Policy) FullAction() string {
+	return string(p.ActionGroup) + ":" + string(p.Action)
+}
+
+// GetActionNames returns the AWS API action names belonging to an
+// ActionGroup, e.g. GetActionNames(S3) returns ["ListBuckets", "GetObject",
+// ...].
+func GetActionNames(group ActionGroup) []string {
+	actions, ok := groupActions[group]
+	if !ok {
+		return nil
 	}
+	names := make([]string, len(actions))
+	for i, a := range actions {
+		names[i] = string(a)
+	}
+	return names
+}
 
-	return out
+// GetFullActionsForGroup returns fully qualified action strings for every
+// action in the given group, e.g. GetFullActionsForGroup(S3) returns
+// ["s3:ListBuckets", "s3:GetObject", ...].
+func GetFullActionsForGroup(group ActionGroup) []string {
+	actions, ok := groupActions[group]
+	if !ok {
+		return nil
+	}
+	full := make([]string, len(actions))
+	for i, a := range actions {
+		full[i] = string(group) + ":" + string(a)
+	}
+	return full
 }
