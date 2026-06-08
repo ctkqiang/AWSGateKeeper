@@ -1,9 +1,8 @@
 package main
 
 import (
-	"context"
-
 	aws_gatekeeper_glob "aws_gatekeeper/internal/services/aws"
+	"context"
 )
 
 func main() {
@@ -15,4 +14,5 @@ func main() {
 	if err := aws_gatekeeper_glob.ServeLambdaEndpoint(); err != nil {
 		panic(err)
 	}
+
 }
