@@ -1,0 +1,8 @@
+*.trae
+*.log
+*.json
+*.cfg
+*.exe
+*.bin
+.env
+aws-config.yaml
