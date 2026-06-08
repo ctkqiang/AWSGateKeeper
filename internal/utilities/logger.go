@@ -102,7 +102,26 @@ const (
 	colorBlue   = "\033[34m"
 	colorPink   = "\033[35m"
 	colorGreen  = "\033[32m"
+	colorBold   = "\033[1m"
 )
+
+func buildLogBlock(header string, color string, rows [][]string) string {
+	keyWidth := 0
+	for _, r := range rows {
+		if len(r) == 2 && len(r[0]) > keyWidth {
+			keyWidth = len(r[0])
+		}
+	}
+
+	var sb strings.Builder
+	sb.WriteString(color + colorBold + header + colorReset + "\n")
+	for _, r := range rows {
+		if len(r) == 2 {
+			sb.WriteString(fmt.Sprintf("%s  | %-*s : %s%s\n", color, keyWidth, r[0], r[1], colorReset))
+		}
+	}
+	return sb.String()
+}
 
 var (
 	startTime       = time.Now()
@@ -407,6 +426,18 @@ func VVerbose(format string, a ...interface{}) { Log(VVERBOSE, format, a...) }
 // Output:
 //
 //	[IdentityCardOCRService@20260522:15:30:46MYT]::INFO:: (Feed:Insert>>TASK-042::InsertRawPriceDataBatch)Status=OK, Type=ACTION, Memory=145.23MB, Routine=TASK-042, Elapsed: 12.45ms, batch_count=800, exchange=NASDAQ, inserted_at=2026-05-22T15:30:46Z
+func formatElapsed(elapsed time.Duration) string {
+	if elapsed.Microseconds() > 0 {
+		if elapsed.Microseconds() < 1000 {
+			return fmt.Sprintf("%.2fμs", float64(elapsed.Microseconds()))
+		} else if elapsed.Milliseconds() < 1000 {
+			return fmt.Sprintf("%.2fms", float64(elapsed.Milliseconds()))
+		}
+		return fmt.Sprintf("%.2fs", elapsed.Seconds())
+	}
+	return "0μs"
+}
+
 func Logf(component, operation string, level LogLevel, status string, elapsed time.Duration, details ...string) {
 	if level < CurrentLevel {
 		return
@@ -417,33 +448,28 @@ func Logf(component, operation string, level LogLevel, status string, elapsed ti
 	heapMB := getMemStats()
 
 	header := formatHeader(level, component, operation, goroutineID, function)
+	elapsedStr := formatElapsed(elapsed)
 
-	var elapsedStr string
-	if elapsed.Microseconds() > 0 {
-		if elapsed.Microseconds() < 1000 {
-			elapsedStr = fmt.Sprintf("%.2fμs", float64(elapsed.Microseconds()))
-		} else if elapsed.Milliseconds() < 1000 {
-			elapsedStr = fmt.Sprintf("%.2fms", float64(elapsed.Milliseconds()))
-		} else {
-			elapsedStr = fmt.Sprintf("%.2fs", elapsed.Seconds())
-		}
-	} else {
-		elapsedStr = "0μs"
+	rows := [][]string{
+		{"Status", status},
+		{"Type", "ACTION"},
+		{"Memory", fmt.Sprintf("%.2fMB", heapMB)},
+		{"Routine", goroutineID},
+		{"Elapsed", elapsedStr},
 	}
 
-	output := fmt.Sprintf("%sStatus=%s, Type=ACTION, Memory=%.2fMB, Routine=%s, Elapsed: %s",
-		header, status, heapMB, goroutineID, elapsedStr)
-
-	if len(details) > 0 {
-		output += ", " + strings.Join(details, ", ")
+	for _, d := range details {
+		parts := strings.SplitN(d, "=", 2)
+		if len(parts) == 2 {
+			rows = append(rows, []string{strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])})
+		} else {
+			rows = append(rows, []string{d, ""})
+		}
 	}
 
 	color := getLevelColor(level)
-	if color != "" {
-		fmt.Printf("%s%s%s\n", color, output, colorReset)
-	} else {
-		fmt.Printf("%s\n", output)
-	}
+	output := buildLogBlock(header, color, rows)
+	fmt.Print(output)
 
 	if level == ERROR && errorCallback != nil {
 		errorCallback(output)
@@ -559,21 +585,25 @@ func LogStatus(update StatusUpdate) {
 
 	header := formatHeader(INFO, "Feed", "Insert", goroutineID, function)
 
-	var details []string
+	rows := [][]string{
+		{"Status", "OK"},
+		{"Type", "DATA"},
+		{"Memory", fmt.Sprintf("%.2fMB", heapMB)},
+		{"Routine", goroutineID},
+	}
+
 	if update.StockNo != "" {
-		details = append(details,
-			fmt.Sprintf("Stock=%s", update.StockNo),
-			fmt.Sprintf("Price=%.4f", update.LastPrice),
-			fmt.Sprintf("Vol=%.0f", update.Volume),
-			fmt.Sprintf("Seq=%s", update.SequenceNumber),
+		rows = append(rows,
+			[]string{"Stock", update.StockNo},
+			[]string{"Price", fmt.Sprintf("%.4f", update.LastPrice)},
+			[]string{"Vol", fmt.Sprintf("%.0f", update.Volume)},
+			[]string{"Seq", update.SequenceNumber},
 		)
 	}
-	details = append(details, fmt.Sprintf("Msg=%s", update.Message))
+	rows = append(rows, []string{"Msg", update.Message})
 
-	output := fmt.Sprintf("%sStatus=OK, Type=DATA, Memory=%.2fMB, Routine=%s, %s",
-		header, heapMB, goroutineID, strings.Join(details, ", "))
-
-	fmt.Printf("%s%s%s\n", colorBlue, output, colorReset)
+	output := buildLogBlock(header, colorBlue, rows)
+	fmt.Print(output)
 
 	statusMutex.RLock()
 	defer statusMutex.RUnlock()
@@ -674,18 +704,18 @@ func CheckCUrrentMemory() string {
 	uptime := time.Since(startTime).Round(time.Second)
 	numGoroutine := runtime.NumGoroutine()
 
-	status := fmt.Sprintf(
-		"[%s@%s]::INFO:: (App:State>>System::CheckMemory)Status=OK, Heap=%.2fMB, Alloc=%.2fMB, Sys=%.2fMB, Routines=%d, Uptime=%s",
-		APP_NAME,
-		formatTimestamp(),
-		toMB(m.Alloc),
-		toMB(m.TotalAlloc),
-		toMB(m.Sys),
-		numGoroutine,
-		uptime.String(),
-	)
+	header := fmt.Sprintf("[%s@%s]::INFO:: (App:State>>System::CheckMemory)", APP_NAME, formatTimestamp())
+	rows := [][]string{
+		{"Status", "OK"},
+		{"Heap", fmt.Sprintf("%.2fMB", toMB(m.Alloc))},
+		{"Alloc", fmt.Sprintf("%.2fMB", toMB(m.TotalAlloc))},
+		{"Sys", fmt.Sprintf("%.2fMB", toMB(m.Sys))},
+		{"Routines", fmt.Sprintf("%d", numGoroutine)},
+		{"Uptime", uptime.String()},
+	}
 
-	fmt.Printf("%s%s%s\n", colorBlue, status, colorReset)
+	status := buildLogBlock(header, colorBlue, rows)
+	fmt.Print(status)
 	return status
 }
 
