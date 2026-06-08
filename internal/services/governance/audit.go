@@ -5,9 +5,11 @@
 //
 //  1. Application audit (this package)
 //     Writes structured JSON events to os.Stdout, captured by the Lambda
-//     runtime and forwarded to CloudWatch Logs.  Use LogSuccessfulAction
-//     and LogFailedAction for business-level events (role assumption,
-//     policy changes, user access decisions).
+//     runtime and forwarded to CloudWatch Logs.  If SIEM_ENABLED=true,
+//     each event is also forwarded to an external SIEM (Splunk, Datadog,
+//     or any JSON-over-HTTP collector) via the [siem] package.  Use
+//     LogSuccessfulAction and LogFailedAction for business-level events
+//     (role assumption, policy changes, user access decisions).
 //
 //  2. Infrastructure audit (CloudTrail — automatic)
 //     Every AWS API call is captured by CloudTrail without any application
@@ -52,6 +54,7 @@ package governance
 
 import (
 	"aws_gatekeeper/internal/model"
+	"aws_gatekeeper/internal/services/siem"
 	"aws_gatekeeper/internal/utilities"
 	"encoding/json"
 	"os"
@@ -97,6 +100,9 @@ func WriteAuditEvent(logger *model.AuditLogger, event model.AuditEvent) {
 	if err := logger.JsonEncoder.Encode(event); err != nil {
 		utilities.Error("audit: write event failed: %v", err)
 	}
+
+	// Forward to SIEM (fire-and-forget; no-op when SIEM_ENABLED != "true").
+	siem.Send(event)
 }
 
 // WriteAuditEventUsingDefault is a convenience wrapper that writes the
