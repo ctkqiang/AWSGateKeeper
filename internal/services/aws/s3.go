@@ -26,6 +26,7 @@ import (
 	aws_sdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/google/uuid"
 )
 
@@ -161,8 +162,71 @@ func (l *S3AuditLogger) WriteBatchAuditEvents(events []model.AuditEvent) error {
 	return nil
 }
 
-func InitAthenaClient() {
-	// List the bucketname `/governance-and-audit/`
-	// if no create one then return ,
-	// if exsit then return
+// EnsureCloudTrailBucket verifies that the S3 bucket used for CloudTrail
+// log delivery exists.  If the bucket is not found it creates one in the
+// caller's region with AES-256 encryption enabled by default.
+//
+// Bucket names must be globally unique.  The default name embeds the
+// AWS account ID to minimise collisions:
+//
+//	aws-gatekeeper-cloudtrail-{accountID}
+//
+// CloudTrail itself is responsible for delivering logs to this bucket;
+// this function only guarantees that the destination exists before a
+// trail is configured to write to it.
+//
+//	@param  ctx        cancellation context
+//	@param  accountID  12-digit AWS account ID for bucket-naming
+//	@param  region     AWS region for bucket creation (LocationConstraint)
+//	@return            the S3 bucket name that is guaranteed to exist
+//	@return            non-nil if bucket lookup or creation fails
+func EnsureCloudTrailBucket(ctx context.Context, accountID, region string) (string, error) {
+	bucket := "aws-gatekeeper-cloudtrail-" + accountID
+
+	cfg, err := config.LoadDefaultConfig(ctx, config.WithRegion(region))
+	if err != nil {
+		return "", fmt.Errorf("load config: %w", err)
+	}
+
+	client := s3.NewFromConfig(cfg)
+
+	_, err = client.HeadBucket(ctx, &s3.HeadBucketInput{
+		Bucket: aws_sdk.String(bucket),
+	})
+	if err == nil {
+		return bucket, nil
+	}
+
+	// Bucket does not exist (or we lack permission) — create it.
+	createInput := &s3.CreateBucketInput{
+		Bucket: aws_sdk.String(bucket),
+	}
+	if region != "us-east-1" {
+		createInput.CreateBucketConfiguration = &types.CreateBucketConfiguration{
+			LocationConstraint: types.BucketLocationConstraint(region),
+		}
+	}
+
+	if _, err := client.CreateBucket(ctx, createInput); err != nil {
+		return "", fmt.Errorf("create bucket %s: %w", bucket, err)
+	}
+
+	// Enable default AES-256 encryption on the bucket.
+	_, err = client.PutBucketEncryption(ctx, &s3.PutBucketEncryptionInput{
+		Bucket: aws_sdk.String(bucket),
+		ServerSideEncryptionConfiguration: &types.ServerSideEncryptionConfiguration{
+			Rules: []types.ServerSideEncryptionRule{
+				{
+					ApplyServerSideEncryptionByDefault: &types.ServerSideEncryptionByDefault{
+						SSEAlgorithm: types.ServerSideEncryptionAes256,
+					},
+				},
+			},
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf("enable encryption on %s: %w", bucket, err)
+	}
+
+	return bucket, nil
 }

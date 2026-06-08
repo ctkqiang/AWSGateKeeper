@@ -14,6 +14,11 @@
 // can be configured (via AWS Console / Terraform) to deliver logs to an S3
 // bucket with a Lifecycle Rule transitioning to Glacier for long-term
 // retention — no application code touches S3 or Glacier directly.
+//
+// Reference: https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/service/cloudtrail
+// CloudTrail API provides event lookup, insights analysis, and trail management capabilities
+// This package primarily uses the LookupEvents API for historical event queries
+
 package aws
 
 import (
