@@ -244,8 +244,8 @@ cp aws-config.example.yaml aws-config.yaml
 ```yaml
 # aws-config.yaml
 aws:
-  access_key_id:     AKIAIOSFODNN7EXAMPLE
-  secret_access_key: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+  access_key_id:     YOUR_ACCESS_KEY_ID
+  secret_access_key: YOUR_SECRET_ACCESS_KEY
   region:            ap-east-1
 ```
 
