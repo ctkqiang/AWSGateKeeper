@@ -14,10 +14,12 @@ const (
 
 const (
 	Root UserPriviledge = iota
-	SeniorDeveloper
+	SOCAnalyst
+	FrontEndDeveloper
+	BackEndDeveloper
 	DeploymentOperation
-	JuniorDeveloper
-	ThridPartyDeveloper
+	ThridPartyFrontEndDeveloper
+	ThridPartyBackEndDeveloper
 	BillingOnly
 )
 

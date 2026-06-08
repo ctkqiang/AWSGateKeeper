@@ -16,6 +16,8 @@ const (
 
 	IndexPath  = "/"
 	HealthPath = "/health"
+
+	CreateUserPath = "/create-user"
 )
 
 // ServeLambdaEndpoint starts an HTTP handler that, depending on the execution
@@ -23,7 +25,7 @@ const (
 //
 // # Environment Detection
 //
-// When both _LAMBDA_SERVER_PORT and AWS_LAMBDA_RUNTIME_API are set, the
+// When both _LAMBDA_SERVER_PORT and AWS_LAMBDA_RUNTIME_API are set, thez
 // function enters Lambda mode via lambda.Start.  Otherwise it falls back to
 // a local HTTP server on 0.0.0.0:8080, suitable for local development and
 // integration testing.
