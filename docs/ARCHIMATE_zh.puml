@@ -1,0 +1,100 @@
+@startuml
+!theme mars
+
+title AWSGateKeeper — 企业架构（ArchiMate 视图）\nAWS 云安全自动化平台
+
+' 动机层
+rectangle "利益相关者" as stake {
+    rectangle "云安全\n工程师" as cse
+    rectangle "DevSecOps\n团队" as dso
+    rectangle "事件响应\n人员" as ir
+    rectangle "合规\n官" as co
+}
+
+rectangle "驱动因素" as drivers {
+    rectangle "SOC 2 / PCI-DSS\n合规" as soc2
+    rectangle "IAM 最小\n权限" as leastpriv
+    rectangle "零信任\n架构" as zt
+    rectangle "自动化\n事件响应" as air
+}
+
+rectangle "评估层" as assess {
+    rectangle "GuardDuty\n威胁检测" as gd_assess
+    rectangle "Inspector\nCVE 扫描" as insp_assess
+    rectangle "CloudTrail\nAPI 审计" as ct_assess
+}
+
+' 业务层
+rectangle "业务层" as biz {
+    rectangle "安全扫描\n编排" as scan_orch
+    rectangle "合规\n基线审计" as compliance
+    rectangle "事件响应\n管道" as ir_pipe
+    rectangle "报告\n生成" as report_gen
+}
+
+' 应用层
+rectangle "应用层\n(AWS 服务)" as app {
+    rectangle "API Gateway\nREST / HTTP" as apigw
+    rectangle "Lambda\nAWSGateKeeper\n(Go 1.26)" as lambda
+    rectangle "EventBridge\n事件总线" as eb
+    rectangle "S3\n审计日志" as s3_audit
+    rectangle "DynamoDB\n发现物存储" as ddb
+}
+
+' 技术层
+rectangle "技术层\n(AWS 基础设施)" as tech {
+    rectangle "IAM\n角色 + 策略" as iam_tech
+    rectangle "Cognito\n用户池" as cog_tech
+    rectangle "STS\n身份\n验证" as sts_tech
+    rectangle "CloudWatch\n日志 + 指标" as cw_tech
+    rectangle "X-Ray\n追踪" as xr_tech
+}
+
+' 外部系统
+rectangle "外部\n系统" as ext {
+    rectangle "SIEM\nSplunk / Datadog" as siem
+    rectangle "消息\nSlack / Teams / 飞书" as msg
+    rectangle "CI/CD\n管道" as cicd
+}
+
+' 关系 — 动机层
+cse --> soc2
+dso --> leastpriv
+ir --> air
+co --> soc2
+soc2 --> compliance
+leastpriv --> compliance
+zt --> scan_orch
+air --> ir_pipe
+
+' 关系 — 业务层 → 应用层
+scan_orch --> apigw
+compliance --> apigw
+ir_pipe --> apigw
+report_gen --> apigw
+
+apigw --> lambda
+lambda --> eb
+lambda --> s3_audit
+lambda --> ddb
+
+' 关系 — 应用层 → 技术层
+lambda --> iam_tech
+lambda --> cog_tech
+lambda --> sts_tech
+lambda --> cw_tech
+lambda --> xr_tech
+
+' 关系 — 评估层输入业务层
+gd_assess --> scan_orch
+insp_assess --> scan_orch
+ct_assess --> compliance
+
+' 关系 — 外部
+eb --> siem
+s3_audit --> siem
+report_gen --> msg
+ir_pipe --> msg
+cicd --> lambda
+
+@enduml

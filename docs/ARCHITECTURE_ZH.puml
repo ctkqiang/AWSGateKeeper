@@ -1,0 +1,192 @@
+@startuml
+!theme mars
+title AWSGateKeeper — System Architecture
+
+skinparam package {
+    BackgroundColor #1A1A2E
+    BorderColor #00D2FF
+    FontColor #E0E0E0
+}
+
+left to right direction
+
+actor "Security Operator" as op
+
+rectangle "AWS Cloud — ap-east-1" as aws {
+    rectangle "API Gateway\nREST / HTTP / URL" as api
+    rectangle "Lambda\nAWSGateKeeper\nGo 1.26\nprovided.al2023" as lambda
+
+    rectangle "GuardDuty\nThreat Detection" as gd
+    rectangle "Inspector\nContainer CVE Scan" as insp
+    rectangle "Detective / CT\nRoot Cause Analysis" as det
+    rectangle "IAM\nRole + Policy" as iam_role
+    rectangle "Cognito\nUser Pool Audit" as cog
+    rectangle "S3\nAudit Log + Trail" as s3
+    rectangle "EventBridge\nEvent Bus" as eb
+    rectangle "CloudWatch\nLogs + Metrics" as cw
+}
+
+rectangle "External SIEM\nSplunk / Datadog" as siem
+
+op --> api : HTTP requests
+api --> lambda : proxy events
+lambda --> gd : ListFindings + GetFindings
+lambda --> insp : ListFindings
+lambda --> det : CloudTrail LookupEvents
+lambda --> iam_role : CreateRole + PutPolicy + UpdateAccessKey
+lambda --> cog : AdminListGroupsForUser
+lambda --> s3 : PutObject (audit logs)
+lambda --> eb : PutEvents
+lambda --> cw : stdout logs
+eb --> siem : JSON events (fire-and-forget)
+s3 --> siem : security reports
+
+note right of lambda
+  **Dual-mode execution**
+  Lambda (API Gateway) or
+  Local HTTP :8000
+end note
+
+@enduml
+
+@startuml
+!theme mars
+
+title AWSGateKeeper — Package Dependency Graph
+
+package "main.go" {
+    [main] as main_entry
+}
+
+package "internal/routes" {
+    [SecurityScanHandler]
+    [SecurityHealthHandler]
+    [Index]
+    [Health]
+}
+
+package "internal/services/aws" {
+    [GuardDutyClient]
+    [InspectorClient]
+    [DetectiveClient]
+    [Initialize]
+    [GetAccount]
+    [ServeLambdaEndpoint]
+    [CreateRolesForAllPrivileges]
+    [BuildInlinePolicy]
+    [NewTrailClient]
+    [NewS3AuditLogger]
+    [EnsureCloudTrailBucket]
+}
+
+package "internal/services/security" {
+    [ScanOrchestrator]
+    [ExecuteScanAndDeliver]
+    [BuildReport]
+    [SendToMessagingEndpoint]
+    [SaveReportToS3]
+    [SaveReportToDynamoDB]
+}
+
+package "internal/services/governance" {
+    [WriteAuditEvent]
+    [LogSuccessfulAction]
+    [LogFailedAction]
+}
+
+package "internal/services/siem" {
+    [Send]
+    [newForwarder]
+}
+
+package "internal/security" {
+    [AuditWildcardPolicy]
+    [RaiseWildcardAlert]
+    [AWSCredentials]
+}
+
+package "internal/model" {
+    [SecurityReport]
+    [GuardDutyFinding]
+    [InspectorFinding]
+    [InvestigationResult]
+    [AuditEvent]
+    [User]
+    [APIGatewayEvent]
+}
+
+main_entry --> Initialize
+main_entry --> ServeLambdaEndpoint
+
+ServeLambdaEndpoint --> SecurityScanHandler
+ServeLambdaEndpoint --> SecurityHealthHandler
+
+SecurityScanHandler --> ExecuteScanAndDeliver
+ExecuteScanAndDeliver --> ScanOrchestrator
+ScanOrchestrator --> GuardDutyClient
+ScanOrchestrator --> InspectorClient
+ScanOrchestrator --> DetectiveClient
+ScanOrchestrator --> BuildReport
+
+BuildReport --> SendToMessagingEndpoint
+BuildReport --> SaveReportToS3
+BuildReport --> SaveReportToDynamoDB
+
+GuardDutyClient --> AuditWildcardPolicy
+GuardDutyClient --> LogFailedAction
+
+LogFailedAction --> WriteAuditEvent
+WriteAuditEvent --> Send
+
+Initialize --> AWSCredentials
+Initialize --> GetAccount
+
+@enduml
+
+@startuml
+!theme mars
+
+title AWSGateKeeper — Layered Architecture
+
+rectangle "Transport Layer" as transport {
+    [API Gateway Proxy] as agw
+    [HTTP Server :8000] as http
+    [HandleAPIGatewayEvent] as hage
+}
+
+rectangle "Route Layer" as route {
+    [GET /] as r_index
+    [GET /health] as r_health
+    [POST /security/scan] as r_scan
+    [GET /security/health] as r_security_health
+}
+
+rectangle "Service Layer" as service {
+    [Security Orchestrator] as sec_orch
+    [IAM Role Governance] as iam_gov
+    [CloudTrail Lookup] as ct_lookup
+    [SIEM Forwarder] as siem_fwd
+    [Audit Logger] as audit_log
+    [Wildcard Monitor] as wild_mon
+}
+
+rectangle "AWS Integration Layer" as aws_int {
+    [GuardDuty Client] as gd_client
+    [Inspector Client] as insp_client
+    [IAM Client] as iam_client
+    [S3 Client] as s3_client
+    [STS Client] as sts_client
+}
+
+rectangle "Infrastructure Layer" as infra {
+    [YAML Config Loader] as yaml_cfg
+    [Structured Logger] as struct_log
+}
+
+transport --> route : dispatch
+route --> service : invoke
+service --> aws_int : AWS API calls
+transport --> infra : init-time
+service --> infra : runtime
+
+@enduml

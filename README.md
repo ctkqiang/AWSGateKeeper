@@ -18,6 +18,28 @@ AWS security auditing gateway — **GuardDuty threat response**, **Inspector CVE
 
 ---
 
+## Architecture Diagrams
+
+### System Architecture
+
+![](./out/docs/ARCHITECTURE_EN/ARCHITECTURE_EN-1.png)
+
+### Enterprise Architecture (ArchiMate)
+
+![](./out/docs/ARCHIMATE_en/ARCHIMATE_en.png)
+
+### Security Scan Sequence
+
+![](./out/docs/SEQUENCE_EN/SEQUENCE_EN.png)
+
+### Cold Start + Scan Timing
+
+![](./out/docs/TIMING_en/TIMING_en.png)
+
+> **PlantUML sources:** [docs/](docs/) | **Render:** `plantuml docs/*.puml -o ../out/docs/`
+
+---
+
 ## Why AWSGateKeeper Exists
 
 ### The Problem

@@ -1,0 +1,48 @@
+@startuml
+!theme mars
+
+title AWSGateKeeper — Security Data Flow
+
+rectangle "CloudTrail\nIAM Events" as ct
+rectangle "GuardDuty\nFindings" as gd
+rectangle "Inspector\nCVEs" as insp
+rectangle "EventBridge\nTrigger" as eb
+
+rectangle "Incident Handler\n(internal/services/security)" as handler
+
+rectangle "Policy Audit\n(security/monitor.go)" as audit
+rectangle "Threat Correlation\n(guardduty.go)" as threat
+rectangle "Quarantine Engine\n(quarantine.go)" as qe
+
+rectangle "IAM\nDeny-* Policy" as iam_deny
+rectangle "IAM\nKey Deactivation" as iam_key
+rectangle "STS\nSession Revoke" as sts_session
+
+rectangle "Report Builder\n(report.go)" as report
+rectangle "Markdown\nOutput" as md
+rectangle "Messaging\nWebhook" as webhook
+rectangle "S3\nAudit Bucket" as s3
+rectangle "DynamoDB\nFindings Table" as ddb
+
+ct --> eb
+eb --> handler
+
+handler --> audit
+handler --> threat
+
+audit --> handler : violations
+threat --> handler : threat score (0.0-10.0)
+
+handler --> qe : shouldQuarantine?\nCRITICAL or score >= 7.0
+
+qe --> iam_deny : PutUserPolicy / PutRolePolicy\nDeny * on *
+qe --> iam_key : ListAccessKeys\nUpdateAccessKey(INACTIVE)
+qe --> sts_session : session invalidation\n(Deny-* policy enforcement)
+
+handler --> report : BuildReport()
+report --> md : Markdown string
+report --> webhook : POST JSON
+report --> s3 : PutObject
+report --> ddb : PutItem
+
+@enduml

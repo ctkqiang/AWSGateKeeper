@@ -1,0 +1,48 @@
+@startuml
+!theme mars
+
+title AWSGateKeeper — 安全数据流
+
+rectangle "CloudTrail\nIAM 事件" as ct
+rectangle "GuardDuty\n发现" as gd
+rectangle "Inspector\nCVE" as insp
+rectangle "EventBridge\n触发器" as eb
+
+rectangle "事件处理器\n(internal/services/security)" as handler
+
+rectangle "策略审计\n(security/monitor.go)" as audit
+rectangle "威胁关联\n(guardduty.go)" as threat
+rectangle "隔离引擎\n(quarantine.go)" as qe
+
+rectangle "IAM\nDeny-* 策略" as iam_deny
+rectangle "IAM\n密钥停用" as iam_key
+rectangle "STS\n会话失效" as sts_session
+
+rectangle "报告生成器\n(report.go)" as report
+rectangle "Markdown\n输出" as md
+rectangle "消息\nWebhook" as webhook
+rectangle "S3\n审计桶" as s3
+rectangle "DynamoDB\n发现物表" as ddb
+
+ct --> eb
+eb --> handler
+
+handler --> audit
+handler --> threat
+
+audit --> handler : 违规列表
+threat --> handler : 威胁评分 (0.0-10.0)
+
+handler --> qe : 是否隔离？\nCRITICAL 或 评分 >= 7.0
+
+qe --> iam_deny : PutUserPolicy / PutRolePolicy\nDeny * on *
+qe --> iam_key : ListAccessKeys\nUpdateAccessKey(INACTIVE)
+qe --> sts_session : 会话失效\n(Deny-* 策略强制执行)
+
+handler --> report : BuildReport()
+report --> md : Markdown 字符串
+report --> webhook : POST JSON
+report --> s3 : PutObject
+report --> ddb : PutItem
+
+@enduml

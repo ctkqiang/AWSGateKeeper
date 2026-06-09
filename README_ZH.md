@@ -16,6 +16,28 @@ AWS 安全审计网关 — **GuardDuty 威胁响应**、**Inspector CVE 扫描**
 
 ---
 
+## 架构图
+
+### 系统架构
+
+![](./out/docs/ARCHITECTURE_ZH/ARCHITECTURE_ZH.png)
+
+### 企业架构 (ArchiMate)
+
+![](./out/docs/ARCHIMATE_zh/ARCHIMATE_zh.png)
+
+### 安全扫描时序
+
+![](./out/docs/SEQUENCE_EN/SEQUENCE_EN.png)
+
+### 冷启动 + 扫描时序
+
+![](./out/docs/TIMING_en/TIMING_en.png)
+
+> **PlantUML 源文件:** [docs/](docs/) | **渲染:** `plantuml docs/*.puml -o ../out/docs/`
+
+---
+
 ## 为什么存在 AWSGateKeeper
 
 ### 问题

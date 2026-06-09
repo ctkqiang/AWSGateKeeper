@@ -1,0 +1,194 @@
+@startuml
+!theme mars
+
+title AWSGateKeeper — 冷启动时序图
+
+concise "Lambda 实例" as li
+concise "AWS 服务" as aws
+
+@0
+li is "初始化"
+aws is "空闲"
+
+@1
+li is "认证中"
+aws is "STS\nGetCallerIdentity"
+
+@2
+li is "基础设施\n检查"
+
+@3
+li is "就绪"
+
+@4
+li is "服务中"
+
+@0
+note right
+  **main() 启动**
+  preference.init()
+  → 查找 aws-config.yaml
+  → os.Setenv(AWS_*)
+end note
+
+@1
+note right
+  aws.Initialize(ctx)
+  → LoadDefaultConfig
+  → STS GetCallerIdentity
+  耗时: ~200-500ms
+end note
+
+@2
+note right
+  验证 S3 + DynamoDB
+  + EventBridge 存在
+  耗时: ~500ms-2s
+end note
+
+@enduml
+
+@startuml
+!theme mars
+
+title AWSGateKeeper — 安全扫描时序 (POST /security/scan)
+
+concise "HTTP" as http
+concise "GuardDuty\n扫描" as gd
+concise "Inspector\n扫描" as insp
+concise "Detective\n调查" as det
+concise "报告\n生成" as rpt
+concise "投递\nWebhook" as web
+
+@0
+http is "请求"
+gd is "空闲"
+insp is "空闲"
+det is "空闲"
+rpt is "空闲"
+web is "空闲"
+
+@1
+http is "处理中"
+gd is "ListFindings\n(分页)"
+insp is "ListFindings\n(分页)"
+
+@2
+http is "处理中"
+gd is "GetFindings\n(逐批详情)"
+insp is "解析 CVE\n记录元数据"
+
+@3
+http is "处理中"
+det is "LookupEvents\n(CloudTrail)\n根因分析\n+ 修复建议"
+
+@4
+http is "处理中"
+rpt is "BuildReport\nMarkdown\n表格 + 摘要"
+
+@5
+http is "响应中"
+web is "POST JSON\n→ Slack/钉钉/飞书"
+
+@6
+http is "200 OK"
+web is "已投递"
+
+@1
+note right
+  **并行阶段 (errgroup)**
+  GuardDuty 和 Inspector
+  并发运行。
+  耗时: ~2-10s 每个
+end note
+
+@3
+note right
+  **逐条顺序执行**
+  仅 High+ 级别的发现
+  触发 Detective 调查。
+  耗时: ~1-5s 每条
+end note
+
+@5
+note right
+  **异步 goroutine**
+  S3 + DynamoDB 持久化
+  在后台运行。
+  HTTP 响应不等待。
+end note
+
+@enduml
+
+@startuml
+!theme mars
+
+title AWSGateKeeper — 事件响应时序（隔离循环）
+
+concise "EventBridge" as eb
+concise "事件\n处理器" as ih
+concise "策略\n审计" as audit
+concise "威胁\n关联" as threat
+concise "隔离\n引擎" as qe
+concise "报告\n+ Webhook" as rweb
+
+@0
+eb is "空闲"
+ih is "空闲"
+audit is "空闲"
+threat is "空闲"
+qe is "空闲"
+rweb is "空闲"
+
+@1
+eb is "CloudTrail\nIAM 事件"
+ih is "解析事件\n提取策略"
+
+@2
+ih is "审计中"
+audit is "通配符检查\n跨账户检查"
+
+@3
+audit is "发现违规"
+ih is "关联中"
+threat is "GuardDuty\n发现查询"
+
+@4
+threat is "评分 ≥ 7.0"
+ih is "决策:\n隔离"
+
+@5
+ih is "执行中"
+qe is "PutUserPolicy\nDeny-*"
+
+@6
+qe is "停用\n访问密钥"
+ih is "生成报告"
+
+@7
+qe is "会话\n已失效"
+ih is "报告就绪"
+rweb is "POST Webhook\n→ Slack/Teams"
+
+@8
+eb is "空闲"
+rweb is "已投递"
+
+@3
+note right
+  **威胁评分 =**
+  匹配主体 ARN 的
+  GuardDuty 发现
+  严重性加权总和。
+  0.0 = 正常, 10.0 = 最高风险。
+end note
+
+@5
+note right
+  **隔离触发条件:**
+  CRITICAL 违规
+  或 威胁评分 ≥ 7.0
+end note
+
+@endif
+@enduml

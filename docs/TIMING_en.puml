@@ -46,7 +46,6 @@ note right
   Duration: ~500ms-2s
 end note
 
-@endif
 @enduml
 
 @startuml
@@ -120,7 +119,6 @@ note right
   HTTP response does not wait.
 end note
 
-@endif
 @enduml
 
 @startuml
