@@ -1,4 +1,11 @@
 aws:
-  access_key_id: xxxxxxxxxxxxxxxxxx
-  secret_access_key: xxxxxxxxxxxxxx
-  region: xxxxxxxxxxxxxxxxxxxxxxxxx
+  access_key_id: "xxxxxxxxxxxxxxxxxx"
+  secret_access_key: "xxxxxxxxxxxxxx"
+  region: "xxxxxxxxxxxxxxxxxxxxxxxxx"
+
+channel:
+  platform: "slack" # Options: slack, dingtalk, feishu, teams
+  webhook_url: "https://hooks.slack.com/services/T00/B00/X00"
+  # Optional security fields for platforms like DingTalk/Feishu:
+  secret_key: "optional_cryptographic_secret" 
+  keyword: "Security"

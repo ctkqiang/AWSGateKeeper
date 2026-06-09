@@ -15,11 +15,11 @@ import (
 )
 
 type Account struct {
-	cfg      aws_config.Config // reusable AWS SDK config for all service clients
-	identity CallerIdentity    // verified caller identity from STS
-	ready    bool              // true after successful Init()
-	mu       sync.RWMutex      // protects all fields
-	initErr  error             // captured error from the Init process
+	cfg      aws_v2.Config   // reusable AWS SDK config for all service clients
+	identity CallerIdentity   // verified caller identity from STS
+	ready    bool             // true after successful Init()
+	mu       sync.RWMutex     // protects all fields
+	initErr  error            // captured error from the Init process
 }
 
 type CallerIdentity struct {
@@ -97,6 +97,35 @@ func Initialize(ctx context.Context) error {
 	globalAccount = account
 
 	return nil
+}
+
+// GetAccount returns the process-wide authenticated Account singleton.
+// Panics if Initialize() has not been called successfully.
+func GetAccount() *Account {
+	globalMu.Lock()
+	acct := globalAccount
+	globalMu.Unlock()
+
+	if acct == nil {
+		panic("aws: Initialize() must be called before GetAccount()")
+	}
+	return acct
+}
+
+// Ready reports whether Initialize() has completed successfully and the
+// Account singleton is safe to use. Callers that must avoid panics should
+// guard GetAccount() with Ready().
+func Ready() bool {
+	globalMu.Lock()
+	defer globalMu.Unlock()
+	return globalAccount != nil && globalAccount.ready
+}
+
+// Config returns the shared AWS SDK configuration from the Account.
+func (a *Account) Config() aws_v2.Config {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.cfg
 }
 
 func AWSAuthorisation() {

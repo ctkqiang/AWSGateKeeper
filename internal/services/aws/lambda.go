@@ -24,14 +24,17 @@ import (
 	"strings"
 	"syscall"
 
+	aws_v2 "github.com/aws/aws-sdk-go-v2/aws"
 	aws_lambda_http "github.com/aws/aws-lambda-go/lambda"
 )
 
 const (
 	addr = "0.0.0.0:8000"
 
-	IndexPath  = "/"
-	HealthPath = "/health"
+	IndexPath         = "/"
+	HealthPath        = "/health"
+	SecurityScanPath  = "/security/scan"
+	SecurityHealthPath = "/security/health"
 
 	CreateUserPath = "/create-user"
 )
@@ -41,9 +44,15 @@ const (
 //
 // Add new routes here; the handler will walk this table in order
 // and call the first matching entry.
-var lambdaRoutes = []routeEntry{
-	{IndexPath, routes.Index},
-	{HealthPath, routes.Health},
+var lambdaRoutes []routeEntry
+
+func initRoutes(cfg aws_v2.Config, scanFunc routes.ScanFunc, healthFunc routes.HealthFunc) {
+	lambdaRoutes = []routeEntry{
+		{IndexPath, routes.Index},
+		{HealthPath, routes.Health},
+		{SecurityScanPath, routes.SecurityScanHandler(scanFunc)},
+		{SecurityHealthPath, routes.SecurityHealthHandler(healthFunc)},
+	}
 }
 
 // routeEntry pairs a URL path with its handler function.
@@ -92,20 +101,17 @@ func (r *responseRecorder) WriteHeader(code int) { r.statusCode = code }
 // execution environment, runs as an AWS Lambda handler or as a standard
 // HTTP server.
 //
-// # Environment Detection
-//
-// When both _LAMBDA_SERVER_PORT and AWS_LAMBDA_RUNTIME_API are set the
-// function enters Lambda mode via lambda.Start.  Otherwise it falls back
-// to a local HTTP server on 0.0.0.0:8080, suitable for local development
-// and integration testing.
-//
-//	@return  error if handler registration fails, adapter creation fails,
-//	         or the local HTTP server cannot start
-func ServeLambdaEndpoint() error {
-	mux := http.NewServeMux()
+// scanFunc and healthFunc are injected by main.go to avoid import cycles
+// between the services/aws and services/security packages.
+func ServeLambdaEndpoint(scanFunc routes.ScanFunc, healthFunc routes.HealthFunc) error {
+	cfg := GetAccount().Config()
+	initRoutes(cfg, scanFunc, healthFunc)
 
+	mux := http.NewServeMux()
 	mux.HandleFunc(IndexPath, logRequest(routes.Index))
 	mux.HandleFunc(HealthPath, logRequest(routes.Health))
+	mux.HandleFunc(SecurityScanPath, logRequest(routes.SecurityScanHandler(scanFunc)))
+	mux.HandleFunc(SecurityHealthPath, logRequest(routes.SecurityHealthHandler(healthFunc)))
 
 	if isLambdaRuntime() {
 		aws_lambda_http.Start(HandleAPIGatewayEvent)
