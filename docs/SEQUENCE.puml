@@ -1,0 +1,168 @@
+@startuml
+!theme mars
+
+title AWSGateKeeper — Security Scan Sequence
+
+actor "Security\nOperator" as op
+participant "API Gateway\nor HTTP :8000" as gw
+participant "Lambda\nHandleRequest" as lambda
+participant "ScanOrchestrator\n(concurrent)" as orch
+participant "GuardDuty\nClient" as gd
+participant "Inspector\nClient" as insp
+participant "Detective\nClient" as det
+participant "IAM\nService" as iam
+participant "Report\nBuilder" as report
+participant "S3\nAudit Bucket" as s3
+participant "SIEM\nEndpoint" as siem
+
+== Init Phase (Cold Start) ==
+lambda -> lambda : aws.Initialize(ctx)\nSTS GetCallerIdentity
+lambda -> lambda : ServeLambdaEndpoint()
+
+== Security Scan Request ==
+op -> gw : POST /security/scan
+gw -> lambda : HandleAPIGatewayEvent
+
+lambda -> orch : RunFullScan(ctx)
+activate orch
+
+== Parallel Scan Phase (errgroup) ==
+orch -> gd : ListActiveFindings(detectorID, 24h)
+orch -> insp : ListContainerFindings(24h)
+activate gd
+activate insp
+
+gd -> gd : paginated ListFindings\n+ GetFindings detail
+gd -> gd : parseGuardDutyFinding()\nclassify severity + compromise
+gd --> orch : []GuardDutyFinding
+
+insp -> insp : paginated ListFindings\n(full objects returned)
+insp -> insp : parseInspectorFinding()\nextract CVE + CVSS + package
+insp --> orch : []InspectorFinding
+
+deactivate gd
+deactivate insp
+
+== GuardDuty Actions ==
+loop each ConfirmedCompromised finding
+    orch -> gd : DisableCompromisedCredentials()
+    gd -> iam : ListAccessKeys(userName)
+    iam --> gd : AccessKeyMetadata[]
+    loop each Active key
+        gd -> iam : UpdateAccessKey(INACTIVE)
+        iam --> gd : disabled
+    end
+    gd --> orch : []disabledKeyIDs
+end
+
+== Inspector Logging ==
+orch -> insp : LogCVEs(findings)
+insp -> insp : structured log per CVE
+
+== Detective Investigation (High Severity) ==
+loop each Severity >= High finding
+    orch -> det : InvestigateFinding(findingID, resourceARN, 24h)
+    det -> det : CloudTrail LookupEvents\nby resource ARN
+    det -> det : buildRootCause()\nIP-hop analysis
+    det -> det : buildRecommendation()\nsensitive ops analysis
+    det --> orch : InvestigationResult
+end
+
+== Report Generation ==
+orch -> report : BuildReport(findings, investigations, actions)
+report -> report : renderMarkdown()\nGitHub-flavoured tables
+report --> orch : SecurityReport { Markdown, Summary }
+
+== Delivery (goroutines) ==
+orch -> s3 : SaveReportToS3()\nPUT security-reports/YYYY/MM/DD/{id}.md
+orch -> siem : SendToMessagingEndpoint()\nPOST JSON payload
+deactivate orch
+
+lambda --> gw : 200 { report_id, summary, markdown }
+gw --> op : JSON response
+
+@enduml
+
+@startuml
+!theme mars
+
+title AWSGateKeeper — Cold Start Lifecycle
+
+concise "Lambda Instance" as li
+
+@0
+li is "Init" as init
+@1
+li is "Ready" as ready
+@2
+li is "Processing" as proc
+@3
+li is "Idle" as idle
+
+@0
+note right of li
+  **main() executes:**
+  1. preference.init()
+     → find aws-config.yaml
+     → os.Setenv(AWS_*)
+  2. aws.Initialize(ctx)
+     → LoadDefaultConfig
+     → STS GetCallerIdentity
+  3. ServeLambdaEndpoint()
+     → register routes
+     → lambda.Start or http.Listen
+  Duration: ~500ms-2s
+end note
+
+@2
+note right of li
+  **API Gateway invocation:**
+  POST /security/scan
+  → GuardDuty (paginated)
+  → Inspector (paginated)
+  → Detective (CloudTrail)
+  → Report generation
+  → S3 + SIEM delivery
+  Duration: ~2-30s
+end note
+
+@enduml
+
+@startuml
+!theme mars
+
+title AWSGateKeeper — SIEM Forwarding Flow
+
+participant "AuditEvent\nCreated" as audit
+participant "WriteAuditEvent()" as write
+participant "stdout\nCloudWatch" as cw
+participant "siem.Send()" as send
+participant "HTTP Client\n(goroutine)" as http
+participant "SIEM Backend\nSplunk/Datadog" as siem
+
+audit -> write : AuditEvent { action, user, resource }
+write -> cw : JSON → CloudWatch Logs
+write -> send : fire-and-forget
+
+send -> send : newForwarder()\nSIEM_ENABLED? backend? endpoint?
+alt SIEM_ENABLED != "true"
+    send -> send : no-op return
+else enabled
+    send -> http : go sendWithRetry(event)
+    http -> http : marshalEvent()\nSplunk: { event, sourcetype, time }\nGeneric: raw JSON
+    loop attempt <= retries
+        http -> siem : POST {endpoint}\nAuthorization: Splunk/Bearer token
+        alt 2xx
+            siem --> http : success
+        else 5xx
+            siem --> http : error
+            http -> http : sleep(attempt * 200ms)
+        else 4xx
+            siem --> http : error
+            http -> http : break (non-retryable)
+        end
+    end
+    http --> send : result logged
+end
+
+@enduml
