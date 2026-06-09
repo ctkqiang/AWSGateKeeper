@@ -1,0 +1,100 @@
+@startuml
+!theme mars
+
+title AWSGateKeeper — Enterprise Architecture (ArchiMate View)\nAWS Cloud Security Automation Platform
+
+' Motivation Layer
+rectangle "Stakeholders" as stake {
+    rectangle "Cloud Security\nEngineers" as cse
+    rectangle "DevSecOps\nTeams" as dso
+    rectangle "Incident\nResponders" as ir
+    rectangle "Compliance\nOfficers" as co
+}
+
+rectangle "Drivers" as drivers {
+    rectangle "SOC 2 / PCI-DSS\nCompliance" as soc2
+    rectangle "IAM Least\nPrivilege" as leastpriv
+    rectangle "Zero Trust\nArchitecture" as zt
+    rectangle "Automated\nIncident Response" as air
+}
+
+rectangle "Assessment" as assess {
+    rectangle "GuardDuty\nThreat Detection" as gd_assess
+    rectangle "Inspector\nCVE Scanning" as insp_assess
+    rectangle "CloudTrail\nAPI Audit" as ct_assess
+}
+
+' Business Layer
+rectangle "Business Layer" as biz {
+    rectangle "Security Scan\nOrchestration" as scan_orch
+    rectangle "Compliance\nBaseline Audit" as compliance
+    rectangle "Incident Response\nPipeline" as ir_pipe
+    rectangle "Report\nGeneration" as report_gen
+}
+
+' Application Layer
+rectangle "Application Layer\n(AWS Services)" as app {
+    rectangle "API Gateway\nREST / HTTP" as apigw
+    rectangle "Lambda\nAWSGateKeeper\n(Go 1.26)" as lambda
+    rectangle "EventBridge\nEvent Bus" as eb
+    rectangle "S3\nAudit Logs" as s3_audit
+    rectangle "DynamoDB\nFindings Store" as ddb
+}
+
+' Technology Layer
+rectangle "Technology Layer\n(AWS Infrastructure)" as tech {
+    rectangle "IAM\nRoles + Policies" as iam_tech
+    rectangle "Cognito\nUser Pool" as cog_tech
+    rectangle "STS\nIdentity\nVerification" as sts_tech
+    rectangle "CloudWatch\nLogs + Metrics" as cw_tech
+    rectangle "X-Ray\nTracing" as xr_tech
+}
+
+' External
+rectangle "External\nSystems" as ext {
+    rectangle "SIEM\nSplunk / Datadog" as siem
+    rectangle "Messaging\nSlack / Teams / Feishu" as msg
+    rectangle "CI/CD\nPipeline" as cicd
+}
+
+' Relationships — Motivation
+cse --> soc2
+dso --> leastpriv
+ir --> air
+co --> soc2
+soc2 --> compliance
+leastpriv --> compliance
+zt --> scan_orch
+air --> ir_pipe
+
+' Relationships — Business → Application
+scan_orch --> apigw
+compliance --> apigw
+ir_pipe --> apigw
+report_gen --> apigw
+
+apigw --> lambda
+lambda --> eb
+lambda --> s3_audit
+lambda --> ddb
+
+' Relationships — Application → Technology
+lambda --> iam_tech
+lambda --> cog_tech
+lambda --> sts_tech
+lambda --> cw_tech
+lambda --> xr_tech
+
+' Relationships — Assessment feeds into Business
+gd_assess --> scan_orch
+insp_assess --> scan_orch
+ct_assess --> compliance
+
+' Relationships — External
+eb --> siem
+s3_audit --> siem
+report_gen --> msg
+ir_pipe --> msg
+cicd --> lambda
+
+@enduml
