@@ -103,9 +103,28 @@ const (
 	colorPink   = "\033[35m"
 	colorGreen  = "\033[32m"
 	colorBold   = "\033[1m"
+	colorNoBold = "\033[22m"
 )
 
+// Bold wraps text with ANSI bold escape sequences so it stands out
+// in structured log output while surrounding text stays normal weight.
+//
+// Safe to nest inside any coloured log line; the bold attribute is
+// toggled independently of foreground colour.
+//
+// Usage:
+//
+//	utilities.LogProgress("HTTP", "Listening on "+utilities.Bold(addr), "tls=off")
+//	// header: (HTTP:Listening on **0.0.0.0:8000**>>TASK-001::main)
+//
+//	utilities.LogProgress("HTTP", "Shutting down", "signal="+utilities.Bold("SIGTERM"))
+//	// row:  | Progress : signal=**SIGTERM**
+func Bold(text string) string {
+	return colorBold + text + colorNoBold
+}
+
 func buildLogBlock(header string, color string, rows [][]string) string {
+	var sb strings.Builder
 	keyWidth := 0
 	for _, r := range rows {
 		if len(r) == 2 && len(r[0]) > keyWidth {
@@ -113,8 +132,11 @@ func buildLogBlock(header string, color string, rows [][]string) string {
 		}
 	}
 
-	var sb strings.Builder
-	sb.WriteString(color + colorBold + header + colorReset + "\n")
+	sb.WriteString(color)
+	sb.WriteString(colorBold)
+	sb.WriteString(header)
+	sb.WriteString(colorReset)
+	sb.WriteString("\n")
 	for _, r := range rows {
 		if len(r) == 2 {
 			sb.WriteString(fmt.Sprintf("%s  | %-*s : %s%s\n", color, keyWidth, r[0], r[1], colorReset))
@@ -569,7 +591,19 @@ func LogWarn(component, operation string, msg string, elapsed time.Duration, det
 //	  // ... process batch ...
 //	}
 func LogProgress(component, operation string, msg string, details ...string) {
-	progressDetail := fmt.Sprintf("Progress=%s", msg)
+	resolved := msg
+	if strings.Contains(msg, "%") && len(details) > 0 {
+		verbCount := strings.Count(msg, "%s") + strings.Count(msg, "%d") + strings.Count(msg, "%v") + strings.Count(msg, "%f")
+		if verbCount > 0 && verbCount <= len(details) {
+			args := make([]interface{}, verbCount)
+			for i := 0; i < verbCount; i++ {
+				args[i] = details[i]
+			}
+			resolved = fmt.Sprintf(msg, args...)
+			details = details[verbCount:]
+		}
+	}
+	progressDetail := fmt.Sprintf("Progress=%s", resolved)
 	allDetails := append([]string{progressDetail}, details...)
 	Logf(component, operation, INFO, "IN_PROGRESS", 0, allDetails...)
 }
