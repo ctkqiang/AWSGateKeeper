@@ -95,6 +95,16 @@ const (
 	VVERBOSE
 )
 
+var (
+	startTime       = time.Now()
+	CurrentLevel    = INFO
+	errorCallback   func(string)
+	statusCallbacks = make(map[string]func(StatusUpdate))
+	statusMutex     sync.RWMutex
+	goroutineSeq    = 0
+	goroutineMutex  sync.RWMutex
+)
+
 const (
 	colorReset  = "\033[0m"
 	colorRed    = "\033[31m"
@@ -137,23 +147,15 @@ func buildLogBlock(header string, color string, rows [][]string) string {
 	sb.WriteString(header)
 	sb.WriteString(colorReset)
 	sb.WriteString("\n")
+
 	for _, r := range rows {
 		if len(r) == 2 {
 			sb.WriteString(fmt.Sprintf("%s  | %-*s : %s%s\n", color, keyWidth, r[0], r[1], colorReset))
 		}
 	}
+
 	return sb.String()
 }
-
-var (
-	startTime       = time.Now()
-	CurrentLevel    = INFO
-	errorCallback   func(string)
-	statusCallbacks = make(map[string]func(StatusUpdate))
-	statusMutex     sync.RWMutex
-	goroutineSeq    = 0
-	goroutineMutex  sync.RWMutex
-)
 
 type StatusUpdate struct {
 	StockNo         string
@@ -755,6 +757,7 @@ func CheckCUrrentMemory() string {
 
 func RetryWithBackoff(operationName string, maxAttempts int, backoffDuration time.Duration, operation func() error) error {
 	var lastError error
+
 	for attemptIndex := 0; attemptIndex < maxAttempts; attemptIndex++ {
 		operationError := operation()
 		if operationError == nil {
@@ -764,5 +767,6 @@ func RetryWithBackoff(operationName string, maxAttempts int, backoffDuration tim
 		Log(WARN, "%s attempt %d/%d failed: %v. Retrying in %v...", operationName, attemptIndex+1, maxAttempts, operationError, backoffDuration)
 		time.Sleep(backoffDuration)
 	}
+
 	return fmt.Errorf("%s exhausted %d retries: %w", operationName, maxAttempts, lastError)
 }
