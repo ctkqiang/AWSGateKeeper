@@ -13,17 +13,29 @@ import (
 
 // MessagingConfig holds the parameters required to execute a security
 // scan and deliver the resulting report. All fields are read from
-// environment variables at construction time.
+// environment variables at construction time so the same binary can
+// be deployed across multiple environments without rebuilds.
 type MessagingConfig struct {
-	Config       aws_sdk.Config
-	Region       string
-	DetectorID   string
-	LookbackHrs  int
-	MessagingURL string
+	Config       aws_sdk.Config // shared AWS SDK config
+	Region       string         // region for SDK clients
+	DetectorID   string         // GuardDuty detector ID
+	LookbackHrs  int            // lookback window in hours
+	MessagingURL string         // optional delivery URL
 }
 
 // NewMessagingConfig reads security-scan configuration from environment
 // variables. Returns an error when GUARDDUTY_DETECTOR_ID is empty.
+//
+// Environment variables consumed:
+//
+//	GUARDDUTY_DETECTOR_ID  — required
+//	SECURITY_LOOKBACK_HOURS — optional, default 24
+//	AWS_REGION             — optional, default us-east-1
+//	SECURITY_MESSAGING_URL — optional, empty = no transmission
+//
+//	@param  cfg  shared AWS SDK config
+//	@return      populated MessagingConfig struct
+//	@return      non-nil when the mandatory detector ID is unset
 func NewMessagingConfig(cfg aws_sdk.Config) (MessagingConfig, error) {
 	detectorID := os.Getenv("GUARDDUTY_DETECTOR_ID")
 	if detectorID == "" {
@@ -31,6 +43,8 @@ func NewMessagingConfig(cfg aws_sdk.Config) (MessagingConfig, error) {
 	}
 
 	lookback := 24
+	// SECURITY_LOOKBACK_HOURS lets operators shrink the window during
+	// incident response to scope investigations tighter.
 	if s := os.Getenv("SECURITY_LOOKBACK_HOURS"); s != "" {
 		if n, err := strconv.Atoi(s); err == nil && n > 0 {
 			lookback = n
@@ -56,7 +70,14 @@ func NewMessagingConfig(cfg aws_sdk.Config) (MessagingConfig, error) {
 // constructs the orchestrator, runs the scan, and returns the report.
 //
 // Returns the generated SecurityReport for the caller to serialise
-// as an HTTP response.
+// as an HTTP response.  Delivery to the messaging endpoint is a
+// best-effort side effect of the orchestrator; the returned report
+// is always the same regardless of whether delivery succeeded.
+//
+//	@param  ctx   request context for SDK calls
+//	@param  mcfg  messaging config (see NewMessagingConfig)
+//	@return       populated SecurityReport
+//	@return       non-nil if the scan orchestration itself fails
 func ExecuteScanAndDeliver(ctx context.Context, mcfg MessagingConfig) (*model.SecurityReport, error) {
 	orch := NewScanOrchestrator(OrchestratorConfig{
 		Config:        mcfg.Config,
@@ -76,6 +97,12 @@ func ExecuteScanAndDeliver(ctx context.Context, mcfg MessagingConfig) (*model.Se
 
 // BuildScanResponse converts a SecurityReport into an HTTP-friendly
 // map suitable for JSON marshalling by route handlers.
+//
+// The shape is intentionally flat so dashboards can render
+// counts without parsing the full Markdown body.
+//
+//	@param  report  the report to serialise
+//	@return         map of public-facing fields
 func BuildScanResponse(report *model.SecurityReport) map[string]interface{} {
 	return map[string]interface{}{
 		"report_id":           report.ReportID,
@@ -92,6 +119,9 @@ func BuildScanResponse(report *model.SecurityReport) map[string]interface{} {
 
 // BuildErrorResponse returns a standardised error map for HTTP error
 // responses from security endpoints.
+//
+//	@param  err  the underlying error
+//	@return      map with status="error" and the message
 func BuildErrorResponse(err error) map[string]interface{} {
 	return map[string]interface{}{
 		"status":  "error",
@@ -102,6 +132,14 @@ func BuildErrorResponse(err error) map[string]interface{} {
 // BuildHealthResponse returns a simple health-check payload for the
 // security subsystem, indicating whether GuardDuty and Inspector
 // credentials are configured.
+//
+// The response is "healthy" only when no issues are present;
+// otherwise it is "degraded" with an itemised list of issues so
+// the operator can fix them without consulting logs.
+//
+//	@param  cfg  shared AWS SDK config (currently unused, reserved
+//	            for future region-aware checks)
+//	@return      map of health-check fields
 func BuildHealthResponse(cfg aws_sdk.Config) map[string]interface{} {
 	detectorID := os.Getenv("GUARDDUTY_DETECTOR_ID")
 	messagingURL := os.Getenv("SECURITY_MESSAGING_URL")
@@ -113,6 +151,8 @@ func BuildHealthResponse(cfg aws_sdk.Config) map[string]interface{} {
 		issues = append(issues, "GUARDDUTY_DETECTOR_ID not set")
 	}
 	if messagingURL == "" {
+		// Not strictly a failure (reports are still generated)
+		// but a degraded experience — surface it for visibility.
 		issues = append(issues, "SECURITY_MESSAGING_URL not set — reports are generated but not transmitted")
 	}
 
@@ -130,6 +170,11 @@ func BuildHealthResponse(cfg aws_sdk.Config) map[string]interface{} {
 }
 
 // getLookbackHours reads SECURITY_LOOKBACK_HOURS from env, defaulting to 24.
+//
+// Falls back to 24 when the variable is unset or unparseable, which
+// matches the dashboard default.
+//
+//	@return  lookback window in hours (always > 0)
 func getLookbackHours() int {
 	if s := os.Getenv("SECURITY_LOOKBACK_HOURS"); s != "" {
 		if n, err := strconv.Atoi(s); err == nil && n > 0 {

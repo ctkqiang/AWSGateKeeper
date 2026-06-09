@@ -16,19 +16,29 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
+// quarantinePolicyName is the inline policy name attached to a
+// quarantined identity.  Hard-coded so it can be referenced by the
+// companion RemoveQuarantine cleanup path.
 const quarantinePolicyName = "AWSGateKeeper-Quarantine-DenyAll"
 
 // QuarantineEngine executes non-destructive isolation of compromised
 // IAM identities. It attaches an explicit Deny-* inline policy and
 // revokes active sessions — the identity is NEVER deleted.
+//
+// The design choice is deliberate: deletion is irreversible and
+// destroys forensic evidence.  Quarantine preserves the identity
+// and its history so post-incident analysis can proceed normally.
 type QuarantineEngine struct {
-	iamClient *iam.Client
-	stsClient *sts.Client
+	iamClient *iam.Client // IAM client used for inline policy + key operations
+	stsClient *sts.Client // STS client reserved for session revocation (future)
 }
 
 // NewQuarantineEngine creates a QuarantineEngine from the shared SDK
 // configuration, reusing the same IAM and STS clients used by the rest
 // of the application.
+//
+//	@param  cfg  shared AWS SDK config
+//	@return      ready-to-use QuarantineEngine
 func NewQuarantineEngine(cfg aws_sdk.Config) *QuarantineEngine {
 	return &QuarantineEngine{
 		iamClient: iam.NewFromConfig(cfg),
@@ -46,6 +56,13 @@ func NewQuarantineEngine(cfg aws_sdk.Config) *QuarantineEngine {
 // API call is explicitly denied by the quarantine policy.
 //
 // targetType must be either "user" or "role".
+//
+//	@param  ctx        request context for SDK calls
+//	@param  targetARN  full IAM ARN of the identity to quarantine
+//	@param  targetType "user" or "role"
+//	@return            populated QuarantineRecord with success/failure details
+//	@return            non-nil if the inline-policy attachment fails (and
+//	                  nothing else in the loop is attempted)
 func (q *QuarantineEngine) QuarantineIdentity(ctx context.Context, targetARN, targetType string) (*model.QuarantineRecord, error) {
 	record := &model.QuarantineRecord{
 		TargetARN:  targetARN,
@@ -55,22 +72,27 @@ func (q *QuarantineEngine) QuarantineIdentity(ctx context.Context, targetARN, ta
 
 	targetName := extractNameFromARN(targetARN)
 
+	// Build the Deny-* policy once; failures here are pre-flight and
+	// the quarantine is aborted before any AWS call is made.
 	policyJSON, err := buildQuarantinePolicyJSON()
 	if err != nil {
 		record.ErrorMessage = fmt.Sprintf("build policy: %v", err)
 		return record, err
 	}
 
-	// 1. Attach Deny-* inline policy.
+	// 1. Attach Deny-* inline policy.  The IAM call is type-specific
+	// because AWS does not provide a unified PutIdentityPolicy API
+	// (it requires a managed-policy ARN, not an inline policy).
+	var attachErr error
 	switch targetType {
 	case "user":
-		_, err = q.iamClient.PutUserPolicy(ctx, &iam.PutUserPolicyInput{
+		_, attachErr = q.iamClient.PutUserPolicy(ctx, &iam.PutUserPolicyInput{
 			UserName:       aws_sdk.String(targetName),
 			PolicyName:     aws_sdk.String(quarantinePolicyName),
 			PolicyDocument: aws_sdk.String(policyJSON),
 		})
 	case "role":
-		_, err = q.iamClient.PutRolePolicy(ctx, &iam.PutRolePolicyInput{
+		_, attachErr = q.iamClient.PutRolePolicy(ctx, &iam.PutRolePolicyInput{
 			RoleName:       aws_sdk.String(targetName),
 			PolicyName:     aws_sdk.String(quarantinePolicyName),
 			PolicyDocument: aws_sdk.String(policyJSON),
@@ -80,11 +102,15 @@ func (q *QuarantineEngine) QuarantineIdentity(ctx context.Context, targetARN, ta
 		return record, fmt.Errorf("quarantine: %s", record.ErrorMessage)
 	}
 
-	if err != nil {
-		record.ErrorMessage = fmt.Sprintf("attach quarantine policy: %v", err)
+	if attachErr != nil {
+		// Failure at step 1 is a hard fail: nothing else in the
+		// loop is attempted because the identity would otherwise
+		// be in an inconsistent "keys deactivated but no policy"
+		// state.
+		record.ErrorMessage = fmt.Sprintf("attach quarantine policy: %v", attachErr)
 		governance.LogFailedAction("QuarantineAttachPolicy", "system", targetARN,
-			fmt.Sprintf("failed to attach quarantine policy to %s %s: %v", targetType, targetName, err), nil)
-		return record, fmt.Errorf("quarantine policy: %w", err)
+			fmt.Sprintf("failed to attach quarantine policy to %s %s: %v", targetType, targetName, attachErr), nil)
+		return record, fmt.Errorf("quarantine policy: %w", attachErr)
 	}
 	record.PolicyAttached = true
 	record.PolicyName = quarantinePolicyName
@@ -92,12 +118,16 @@ func (q *QuarantineEngine) QuarantineIdentity(ctx context.Context, targetARN, ta
 	utilities.LogProgress("quarantine", "policy-attached",
 		fmt.Sprintf("Deny-* policy attached to %s %s", targetType, targetName))
 
-	// 2. Deactivate IAM access keys (users only).
+	// 2. Deactivate IAM access keys (users only).  Roles never have
+	// long-lived access keys, so this step is skipped for them.
 	if targetType == "user" {
 		keys, err := q.iamClient.ListAccessKeys(ctx, &iam.ListAccessKeysInput{
 			UserName: aws_sdk.String(targetName),
 		})
 		if err != nil {
+			// List failure is non-fatal: we still want to log
+			// progress, and the Deny-* policy is already
+			// active.  The error is recorded in utilities logs.
 			utilities.Error("quarantine: list keys for %s: %v", targetName, err)
 		} else {
 			for _, key := range keys.AccessKeyMetadata {
@@ -110,6 +140,9 @@ func (q *QuarantineEngine) QuarantineIdentity(ctx context.Context, targetARN, ta
 					Status:      iamtypes.StatusTypeInactive,
 				})
 				if err != nil {
+					// Per-key failure is logged and skipped
+					// so one stale key does not block the
+					// rest of the deactivation loop.
 					utilities.Error("quarantine: deactivate key %s: %v", aws_sdk.ToString(key.AccessKeyId), err)
 					continue
 				}
@@ -127,6 +160,8 @@ func (q *QuarantineEngine) QuarantineIdentity(ctx context.Context, targetARN, ta
 			fmt.Sprintf("role %s: Deny-* policy active — all API calls blocked", targetName))
 	}
 
+	// Record the success in the governance audit log for later
+	// reconstruction of the response timeline.
 	governance.LogSuccessfulAction("QuarantineIdentity", "system", targetARN,
 		fmt.Sprintf("quarantine applied to %s %s: policy=%v keys_deactivated=%d sessions_revoked=%v",
 			targetType, targetName, record.PolicyAttached, len(record.KeysDeactivated), record.SessionsRevoked),
@@ -143,6 +178,13 @@ func (q *QuarantineEngine) QuarantineIdentity(ctx context.Context, targetARN, ta
 // RemoveQuarantine removes the Deny-* inline policy from the specified
 // identity, restoring its original permissions. Use only after a
 // security investigation has confirmed the identity is safe.
+//
+//	@param  ctx        request context for SDK calls
+//	@param  targetARN  full IAM ARN of the identity to release
+//	@param  targetType "user" or "role"
+//	@return            nil on successful policy removal
+//	@return            non-nil if the IAM DeleteUserPolicy /
+//	                  DeleteRolePolicy call fails
 func (q *QuarantineEngine) RemoveQuarantine(ctx context.Context, targetARN, targetType string) error {
 	targetName := extractNameFromARN(targetARN)
 
@@ -170,7 +212,13 @@ func (q *QuarantineEngine) RemoveQuarantine(ctx context.Context, targetARN, targ
 }
 
 // buildQuarantinePolicyJSON returns the JSON-serialised Deny-* inline
-// policy document.
+// policy document.  The single statement denies every action on every
+// resource, which is the strongest non-destructive isolation available
+// in IAM.
+//
+//	@return  serialised policy document (JSON string)
+//	@return  non-nil only on json.Marshal failure (defensive — the
+//	         document is well-known and should never fail)
 func buildQuarantinePolicyJSON() (string, error) {
 	doc := model.QuarantinePolicyDocument{
 		Version: "2012-10-17",
@@ -188,6 +236,16 @@ func buildQuarantinePolicyJSON() (string, error) {
 }
 
 // extractNameFromARN parses the entity name from an IAM ARN.
+//
+// Example: arn:aws:iam::123456789012:user/alice  →  "alice"
+//
+// Falls back to the resource component when the expected
+// "service:name" structure is missing (e.g. for non-standard ARNs),
+// and to the full ARN when the input has fewer than 6 colon-separated
+// segments (the minimum for a valid ARN).
+//
+//	@param  arn  IAM ARN
+//	@return      extracted entity name (or the original ARN if unparsable)
 func extractNameFromARN(arn string) string {
 	parts := strings.Split(arn, ":")
 	if len(parts) < 6 {

@@ -3,7 +3,7 @@
 title AWSGateKeeper — System Architecture
 
 skinparam package {
-    BackgroundColor #1A1A2E
+    BackgroundColor #000000
     BorderColor #00D2FF
     FontColor #E0E0E0
 }
