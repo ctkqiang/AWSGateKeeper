@@ -1,0 +1,197 @@
+@startuml
+!theme mars
+
+title AWSGateKeeper — Cold Start Timing
+
+concise "Lambda Instance" as li
+concise "AWS Services" as aws
+
+@0
+li is "Init"
+aws is "Idle"
+
+@1
+li is "Authenticating"
+aws is "STS\nGetCallerIdentity"
+
+@2
+li is "Infrastructure\nCheck"
+
+@3
+li is "Ready"
+
+@4
+li is "Serving"
+
+@0
+note right
+  **main() starts**
+  preference.init()
+  → find aws-config.yaml
+  → os.Setenv(AWS_*)
+end note
+
+@1
+note right
+  aws.Initialize(ctx)
+  → LoadDefaultConfig
+  → STS GetCallerIdentity
+  Duration: ~200-500ms
+end note
+
+@2
+note right
+  Ensure S3 + DynamoDB
+  + EventBridge exist
+  Duration: ~500ms-2s
+end note
+
+@endif
+@enduml
+
+@startuml
+!theme mars
+
+title AWSGateKeeper — Security Scan Timing (POST /security/scan)
+
+concise "HTTP" as http
+concise "GuardDuty\nScan" as gd
+concise "Inspector\nScan" as insp
+concise "Detective\nInvestigation" as det
+concise "Report\nGeneration" as rpt
+concise "Delivery\nWebhook" as web
+
+@0
+http is "Request"
+gd is "Idle"
+insp is "Idle"
+det is "Idle"
+rpt is "Idle"
+web is "Idle"
+
+@1
+http is "Processing"
+gd is "ListFindings\n(paginated)"
+insp is "ListFindings\n(paginated)"
+
+@2
+http is "Processing"
+gd is "GetFindings\n(detail per batch)"
+insp is "Parse CVEs\nLog metadata"
+
+@3
+http is "Processing"
+det is "LookupEvents\n(CloudTrail)\nRoot cause\n+ Recommendation"
+
+@4
+http is "Processing"
+rpt is "BuildReport\nMarkdown\ntables + summary"
+
+@5
+http is "Responding"
+web is "POST JSON\n→ Slack/Teams/Feishu"
+
+@6
+http is "200 OK"
+web is "Delivered"
+
+@1
+note right
+  **Parallel phase (errgroup)**
+  GuardDuty and Inspector
+  run concurrently.
+  Duration: ~2-10s each
+end note
+
+@3
+note right
+  **Sequential per finding**
+  Only High+ severity
+  findings trigger
+  Detective investigation.
+  Duration: ~1-5s per finding
+end note
+
+@5
+note right
+  **Fire-and-forget goroutine**
+  S3 + DynamoDB persistence
+  runs in background.
+  HTTP response does not wait.
+end note
+
+@endif
+@enduml
+
+@startuml
+!theme mars
+
+title AWSGateKeeper — Incident Response Timing (Quarantine Loop)
+
+concise "EventBridge" as eb
+concise "Incident\nHandler" as ih
+concise "Policy\nAudit" as audit
+concise "Threat\nCorrelation" as threat
+concise "Quarantine\nEngine" as qe
+concise "Report\n+ Webhook" as rweb
+
+@0
+eb is "Idle"
+ih is "Idle"
+audit is "Idle"
+threat is "Idle"
+qe is "Idle"
+rweb is "Idle"
+
+@1
+eb is "CloudTrail\nIAM Event"
+ih is "Parse Event\nExtract Policy"
+
+@2
+ih is "Auditing"
+audit is "Wildcard Check\nCross-Account Check"
+
+@3
+audit is "Violations\nFound"
+ih is "Correlating"
+threat is "GuardDuty\nFindings Lookup"
+
+@4
+threat is "Score ≥ 7.0"
+ih is "DECISION:\nQUARANTINE"
+
+@5
+ih is "Executing"
+qe is "PutUserPolicy\nDeny-*"
+
+@6
+qe is "Deactivate\nAccess Keys"
+ih is "Building Report"
+
+@7
+qe is "Sessions\nInvalidated"
+ih is "Report Ready"
+rweb is "POST Webhook\n→ Slack/Teams"
+
+@8
+eb is "Idle"
+rweb is "Delivered"
+
+@3
+note right
+  **Threat score =**
+  sum of GuardDuty
+  finding severities
+  matching principal ARN.
+  0.0 = clean, 10.0 = max risk.
+end note
+
+@5
+note right
+  **Quarantine trigger:**
+  CRITICAL violation
+  OR threat_score ≥ 7.0
+end note
+
+@endif
+@enduml

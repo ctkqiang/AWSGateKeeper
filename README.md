@@ -1,8 +1,55 @@
 # AWSGateKeeper
 
-AWS security auditing gateway with automated IAM role governance, CloudTrail event analysis, SIEM forwarding, and real-time wildcard policy detection. Deployable as an AWS Lambda function or standalone HTTP server.
+![](./docs/logo.svg)
 
-[English](#english) | [中文](README_ZH.md)
+[![Go Version](https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![AWS Lambda](https://img.shields.io/badge/AWS-Lambda-FF9900?style=flat&logo=aws-lambda)](https://aws.amazon.com/lambda/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Security](https://img.shields.io/badge/AWS-GuardDuty%20%7C%20Inspector%20%7C%20Detective-7B2FF7?style=flat)](https://aws.amazon.com/security/)
+[![Architecture](https://img.shields.io/badge/Architecture-PlantUML-2255CC?style=flat)](docs/ARCHITECTURE.puml)
+[![Release](https://img.shields.io/github/v/release/ctkqiang/AWSGateKeeper?style=flat)](https://gitcode.com/ctkqiang_sr/AWSGateKeeper)
+[![Issues](https://img.shields.io/badge/Issues-Welcome-brightgreen?style=flat)](https://gitcode.com/ctkqiang_sr/AWSGateKeeper/issues)
+
+AWS security auditing gateway — **GuardDuty threat response**, **Inspector CVE scanning**, **Detective root-cause analysis**, **automated IAM role governance**, **real-time wildcard policy detection**, **event-driven incident response with dynamic IAM quarantine**, and **SIEM forwarding**. Deployable as an AWS Lambda function or standalone HTTP server on port 8000.
+
+**Author:** [钟智强 (ctkqiang)](https://github.com/ctkqiang) | **Repository:** [gitcode.com/ctkqiang_sr/AWSGateKeeper](https://gitcode.com/ctkqiang_sr/AWSGateKeeper)
+
+[English](#english) | [中文](README_ZH.md) | [Documentation](docs/index_en.md) | [API Reference](docs/api_en.md) | [Report Bug](https://gitcode.com/ctkqiang_sr/AWSGateKeeper/issues/new?template=bug_report.md) | [Security Concern](https://gitcode.com/ctkqiang_sr/AWSGateKeeper/issues/new?template=security_concern.md)
+
+---
+
+## Why AWSGateKeeper Exists
+
+### The Problem
+
+AWS security is **fragmented across 6+ services** (GuardDuty, Inspector, Detective, IAM, CloudTrail, Cognito) with no unified response pipeline. Security teams face:
+
+- **Alert Fatigue:** GuardDuty generates thousands of findings; 95% are never acted upon due to manual triage overhead.
+- **Slow Incident Response:** The median time from credential compromise detection to IAM key deactivation is **4+ hours** — attackers exploit this window.
+- **Silent Policy Drift:** IAM policies accumulate wildcard permissions (`"Resource": "*"`, `"Action": "*"`) over time without automated detection or rollback.
+- **Container Blindness:** Inspector CVE findings sit in dashboards while vulnerable images continue running in production.
+- **No Cross-Service Correlation:** GuardDuty flags a compromised credential; Inspector flags the same resource's CVE — but no system connects the two.
+
+### The Solution
+
+AWSGateKeeper is a **production-grade, open-source AWS security automation platform** that:
+
+1. **Unifies** GuardDuty, Inspector, Detective, IAM, and CloudTrail into a single event-driven pipeline
+2. **Automates** the entire incident response lifecycle: detect → audit → correlate → quarantine → report
+3. **Quarantines** compromised identities with explicit Deny-* policies — non-destructive, forensically sound, and instantly reversible
+4. **Scans** every IAM policy mutation in real-time against organisational security baselines
+5. **Delivers** actionable Markdown reports to Slack, DingTalk, Feishu, Teams, Splunk, or Datadog
+6. **Runs** on AWS Lambda (serverless, zero-maintenance) or locally as a standalone HTTP server
+
+### Who Is This For
+
+| Role | Use Case |
+|------|----------|
+| **Cloud Security Engineers** | Automate SOC 2, PCI-DSS, HIPAA IAM compliance audits |
+| **DevSecOps Teams** | Integrate security scanning into CI/CD pipelines |
+| **AWS Administrators** | Enforce least-privilege IAM at scale across multi-account organisations |
+| **Incident Responders** | One-click quarantine of compromised credentials during active breaches |
+| **Compliance Officers** | Generate audit-ready Markdown reports with full CloudTrail traceability |
 
 ---
 

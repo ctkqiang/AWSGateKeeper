@@ -1,8 +1,55 @@
 # AWSGateKeeper — AWS 安全审计网关
 
-AWS 安全审计网关，集成 IAM 角色自动化治理、CloudTrail 事件分析、SIEM 转发以及通配符策略实时检测。可部署为 AWS Lambda 函数或独立 HTTP 服务。
+![](./docs/logo.svg)
 
-[English](README.md) | [中文](#中文)
+[![Go Version](https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![AWS Lambda](https://img.shields.io/badge/AWS-Lambda-FF9900?style=flat&logo=aws-lambda)](https://aws.amazon.com/lambda/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Security](https://img.shields.io/badge/AWS-GuardDuty%20%7C%20Inspector%20%7C%20Detective-7B2FF7?style=flat)](https://aws.amazon.com/security/)
+[![Architecture](https://img.shields.io/badge/Architecture-PlantUML-2255CC?style=flat)](docs/ARCHITECTURE.puml)
+[![Release](https://img.shields.io/github/v/release/ctkqiang/AWSGateKeeper?style=flat)](https://gitcode.com/ctkqiang_sr/AWSGateKeeper)
+[![Issues](https://img.shields.io/badge/Issues-Welcome-brightgreen?style=flat)](https://gitcode.com/ctkqiang_sr/AWSGateKeeper/issues)
+
+AWS 安全审计网关 — **GuardDuty 威胁响应**、**Inspector CVE 扫描**、**Detective 根因分析**、**IAM 角色自动化治理**、**通配符策略实时检测**、**事件驱动的事件响应与动态 IAM 隔离**、**SIEM 转发**。可部署为 AWS Lambda 函数或端口 8000 上的独立 HTTP 服务器。
+
+**作者:** [钟智强 (ctkqiang)](https://github.com/ctkqiang) | **仓库:** [gitcode.com/ctkqiang_sr/AWSGateKeeper](https://gitcode.com/ctkqiang_sr/AWSGateKeeper)
+
+---
+
+## 为什么存在 AWSGateKeeper
+
+### 问题
+
+AWS 安全**分散在 6 个以上的服务中**（GuardDuty、Inspector、Detective、IAM、CloudTrail、Cognito），没有统一的响应管道。安全团队面临：
+
+- **告警疲劳：** GuardDuty 生成数千条发现；由于人工分类开销，95% 从未被处理。
+- **事件响应缓慢：** 从检测到凭证泄露到停用 IAM 密钥的中位时间为 **4 小时以上**——攻击者利用这个窗口。
+- **静默策略漂移：** IAM 策略随时间累积通配符权限（`"Resource": "*"`、`"Action": "*"`），没有自动检测或回滚。
+- **容器盲点：** Inspector CVE 发现停留在仪表盘中，而有漏洞的镜像仍在生产环境中运行。
+- **无跨服务关联：** GuardDuty 标记了受损凭证；Inspector 标记了同一资源的 CVE——但没有系统将两者关联起来。
+
+### 解决方案
+
+AWSGateKeeper 是一个**生产级、开源的 AWS 安全自动化平台**：
+
+1. **统一** GuardDuty、Inspector、Detective、IAM 和 CloudTrail 到单一事件驱动管道
+2. **自动化** 整个事件响应生命周期：检测 → 审计 → 关联 → 隔离 → 报告
+3. **隔离** 受损身份，使用显式 Deny-* 策略——非破坏性、符合取证要求、可即时撤销
+4. **扫描** 每次 IAM 策略变更，对照组织安全基线进行实时审计
+5. **投递** 可执行的 Markdown 报告到 Slack、钉钉、飞书、Teams、Splunk 或 Datadog
+6. **运行** 在 AWS Lambda（无服务器、零维护）或本地作为独立 HTTP 服务器
+
+### 适用人群
+
+| 角色 | 用例 |
+|------|----------|
+| **云安全工程师** | 自动化 SOC 2、PCI-DSS、HIPAA IAM 合规审计 |
+| **DevSecOps 团队** | 将安全扫描集成到 CI/CD 管道 |
+| **AWS 管理员** | 在多账户组织中大规模强制执行最小权限 IAM |
+| **事件响应人员** | 在活跃入侵期间一键隔离受损凭证 |
+| **合规官** | 生成附带完整 CloudTrail 可追溯性的审计就绪 Markdown 报告 |
+
+[English](README.md) | [中文](#中文) | [文档](docs/index_zh.md) | [API 参考](docs/api_zh.md)
 
 ---
 

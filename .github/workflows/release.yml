@@ -1,0 +1,76 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Build (linux/arm64)
+        run: |
+          GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -tags lambda.norpc -ldflags="-s -w" -o bootstrap .
+          zip awsgatekeeper-linux-arm64.zip bootstrap
+
+      - name: Build (linux/amd64)
+        run: |
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -tags lambda.norpc -ldflags="-s -w" -o bootstrap .
+          zip awsgatekeeper-linux-amd64.zip bootstrap
+
+      - name: Build (darwin/arm64)
+        run: |
+          GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o awsgatekeeper-darwin-arm64 .
+          zip awsgatekeeper-darwin-arm64.zip awsgatekeeper-darwin-arm64
+
+      - name: Generate checksums
+        run: sha256sum *.zip > checksums.txt
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          body: |
+            ## AWSGateKeeper ${{ github.ref_name }}
+
+            **Release Date:** $(date +%Y-%m-%d)
+
+            ### Build Artifacts
+            | Platform | Architecture | File |
+            |----------|-------------|------|
+            | Linux (Lambda) | arm64 | `awsgatekeeper-linux-arm64.zip` |
+            | Linux (Lambda) | amd64 | `awsgatekeeper-linux-amd64.zip` |
+            | macOS | arm64 | `awsgatekeeper-darwin-arm64.zip` |
+
+            ### Deployment
+            ```bash
+            # Lambda (arm64 recommended)
+            aws lambda create-function \
+                --function-name AWSGateKeeper \
+                --runtime provided.al2023 \
+                --handler bootstrap \
+                --architectures arm64 \
+                --role arn:aws:iam::ACCOUNT:role/execution-role \
+                --zip-file fileb://awsgatekeeper-linux-arm64.zip
+            ```
+
+            ### SHA256 Checksums
+            See `checksums.txt` for verification.
+
+            **Author:** 钟智强 (ctkqiang)
+          files: |
+            *.zip
+            checksums.txt
+          generate_release_notes: true

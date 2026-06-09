@@ -1,6 +1,5 @@
 @startuml
 !theme mars
-
 title AWSGateKeeper — System Architecture
 
 skinparam package {

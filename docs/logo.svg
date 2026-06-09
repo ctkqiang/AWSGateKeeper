@@ -1,66 +1,67 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 200" width="600" height="200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 200">
   <defs>
-    <linearGradient id="shield" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#1A1A2E;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#16213E;stop-opacity:1" />
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#1E293B"/>
     </linearGradient>
-    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#00D2FF;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#7B2FF7;stop-opacity:1" />
+    <linearGradient id="iconGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FF9900"/>
+      <stop offset="100%" stop-color="#FF6600"/>
     </linearGradient>
-    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#E0E0E0;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#FFFFFF;stop-opacity:1" />
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#6366F1"/>
     </linearGradient>
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="2" result="blur" />
-      <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-    </filter>
   </defs>
 
-  <rect width="600" height="200" rx="12" fill="url(#shield)" />
+  <rect width="720" height="200" rx="0" fill="url(#bg)"/>
 
-  <!-- Shield icon -->
-  <g transform="translate(35, 30)">
-    <path d="M60 10 L110 30 L110 80 Q110 115 60 130 Q10 115 10 80 L10 30 Z"
-          fill="none" stroke="url(#accent)" stroke-width="2.5" />
-    <path d="M60 35 L85 48 L85 75 Q85 98 60 108 Q35 98 35 75 L35 48 Z"
-          fill="url(#accent)" opacity="0.15" />
-    <text x="60" y="95" text-anchor="middle" font-family="monospace" font-size="28" font-weight="900" fill="url(#accent)" filter="url(#glow)">GK</text>
+  <!-- Geometric Shield Icon -->
+  <g transform="translate(48, 36)">
+    <!-- Outer hexagon -->
+    <polygon points="64,4 124,24 124,94 64,124 4,94 4,24" fill="none" stroke="#334155" stroke-width="1.5"/>
+    <!-- Middle shield -->
+    <polygon points="64,16 112,32 112,88 64,112 16,88 16,32" fill="#1E293B" stroke="url(#iconGrad)" stroke-width="2"/>
+    <!-- Inner gate bars -->
+    <rect x="52" y="42" width="24" height="4" rx="2" fill="url(#iconGrad)" opacity="0.9"/>
+    <rect x="52" y="52" width="24" height="4" rx="2" fill="url(#iconGrad)" opacity="0.7"/>
+    <rect x="52" y="62" width="24" height="4" rx="2" fill="url(#iconGrad)" opacity="0.5"/>
+    <rect x="52" y="72" width="24" height="4" rx="2" fill="url(#iconGrad)" opacity="0.3"/>
+    <!-- Checkmark on gate -->
+    <path d="M76 56 L82 64 L96 48" fill="none" stroke="#22C55E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
+
+  <!-- Divider line -->
+  <line x1="188" y1="48" x2="188" y2="152" stroke="#334155" stroke-width="1"/>
 
   <!-- Title -->
-  <text x="170" y="68" font-family="SF Pro Display, -apple-system, Helvetica, Arial, sans-serif" font-size="30" font-weight="800" fill="url(#textGrad)" letter-spacing="-0.5">
-    AWSGateKeeper
+  <text x="216" y="76" font-family="SF Pro Display,-apple-system,Helvetica,Arial,sans-serif" font-size="34" font-weight="800" fill="#F1F5F9" letter-spacing="-0.5">
+    AWS<tspan fill="url(#iconGrad)">GateKeeper</tspan>
   </text>
-
-  <!-- Accent line -->
-  <rect x="170" y="82" width="100" height="3" rx="1.5" fill="url(#accent)" />
 
   <!-- Subtitle -->
-  <text x="170" y="108" font-family="SF Pro Display, -apple-system, Helvetica, Arial, sans-serif" font-size="13" font-weight="500" fill="#8892B0" letter-spacing="1.5">
-    AWS IAM SECURITY AUDIT GATEWAY
+  <text x="216" y="104" font-family="SF Pro Display,-apple-system,Helvetica,Arial,sans-serif" font-size="13" font-weight="500" fill="#64748B" letter-spacing="2">
+    IAM SECURITY AUDIT GATEWAY
   </text>
 
-  <!-- Tags -->
-  <g transform="translate(170, 128)">
-    <rect x="0" y="0" width="72" height="20" rx="10" fill="#00D2FF" opacity="0.15" />
-    <text x="36" y="14" text-anchor="middle" font-family="monospace" font-size="10" fill="#00D2FF">GuardDuty</text>
+  <!-- Feature badges -->
+  <g transform="translate(216, 122)">
+    <rect x="0" y="0" width="78" height="22" rx="11" fill="#FF9900" opacity="0.12"/>
+    <text x="39" y="15" text-anchor="middle" font-family="monospace" font-size="10" font-weight="600" fill="#FF9900">GuardDuty</text>
 
-    <rect x="80" y="0" width="60" height="20" rx="10" fill="#7B2FF7" opacity="0.15" />
-    <text x="110" y="14" text-anchor="middle" font-family="monospace" font-size="10" fill="#7B2FF7">Inspector</text>
+    <rect x="86" y="0" width="66" height="22" rx="11" fill="#8B5CF6" opacity="0.12"/>
+    <text x="119" y="15" text-anchor="middle" font-family="monospace" font-size="10" font-weight="600" fill="#8B5CF6">Inspector</text>
 
-    <rect x="148" y="0" width="62" height="20" rx="10" fill="#FF6B6B" opacity="0.15" />
-    <text x="179" y="14" text-anchor="middle" font-family="monospace" font-size="10" fill="#FF6B6B">Detective</text>
+    <rect x="160" y="0" width="70" height="22" rx="11" fill="#EF4444" opacity="0.12"/>
+    <text x="195" y="15" text-anchor="middle" font-family="monospace" font-size="10" font-weight="600" fill="#EF4444">Detective</text>
 
-    <rect x="218" y="0" width="42" height="20" rx="10" fill="#FFD93D" opacity="0.15" />
-    <text x="239" y="14" text-anchor="middle" font-family="monospace" font-size="10" fill="#FFD93D">SIEM</text>
+    <rect x="238" y="0" width="44" height="22" rx="11" fill="#22C55E" opacity="0.12"/>
+    <text x="260" y="15" text-anchor="middle" font-family="monospace" font-size="10" font-weight="600" fill="#22C55E">SIEM</text>
+
+    <rect x="290" y="0" width="56" height="22" rx="11" fill="#3B82F6" opacity="0.12"/>
+    <text x="318" y="15" text-anchor="middle" font-family="monospace" font-size="10" font-weight="600" fill="#3B82F6">IAM</text>
   </g>
 
-  <!-- AWS references -->
-  <g transform="translate(170, 162)">
-    <text font-family="monospace" font-size="9" fill="#495670">
-      GuardDuty · Inspector · Detective · IAM · CloudTrail · Cognito · S3 · STS
-    </text>
-  </g>
+  <!-- Footer line -->
+  <rect x="216" y="156" width="460" height="1" fill="#334155"/>
 </svg>
