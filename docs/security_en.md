@@ -1,5 +1,8 @@
 # Security Subsystem
 
+![](../out/docs/SEQUENCE_EN/SEQUENCE_EN.png)
+![](../out/docs/FLOW_EN/FLOW_EN.png)
+
 ## Overview
 
 The security subsystem integrates three AWS security services into a unified scan orchestration pipeline. It processes threat findings, container vulnerabilities, and root-cause investigations, then generates a Markdown report and delivers it via HTTP messaging, S3, and DynamoDB.

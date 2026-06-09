@@ -2,6 +2,8 @@
 
 ## 系统架构
 
+![](../out/docs/ARCHITECTURE_ZH/ARCHITECTURE_ZH.png)
+
 AWSGateKeeper 采用**六边形/清洁架构**模式，层间严格分离。可作为 API Gateway 后的 AWS Lambda 函数部署，也可作为 `0.0.0.0:8000` 上的独立 HTTP 服务器运行。
 
 ### 分层设计

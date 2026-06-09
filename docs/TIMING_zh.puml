@@ -190,5 +190,4 @@ note right
   或 威胁评分 ≥ 7.0
 end note
 
-@endif
 @enduml

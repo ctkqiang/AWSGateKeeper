@@ -1,5 +1,8 @@
 # 安全子系统
 
+![](../out/docs/SEQUENCE_EN/SEQUENCE_EN.png)
+![](../out/docs/FLOW_ZH/FLOW_ZH.png)
+
 ## 概述
 
 安全子系统将三个 AWS 安全服务集成到统一的扫描编排管道中。它处理威胁发现、容器漏洞和根因调查，然后生成 Markdown 报告，并通过 HTTP 消息传递、S3 和 DynamoDB 进行投递。

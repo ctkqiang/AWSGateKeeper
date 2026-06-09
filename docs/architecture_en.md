@@ -2,6 +2,8 @@
 
 ## System Architecture
 
+![](../out/docs/ARCHITECTURE_EN/ARCHITECTURE_EN-1.png)
+
 AWSGateKeeper follows a **hexagonal / clean architecture** pattern with strict layer separation. The system is deployable as either an AWS Lambda function behind API Gateway or a standalone HTTP server on `0.0.0.0:8000`.
 
 ### Layered Design

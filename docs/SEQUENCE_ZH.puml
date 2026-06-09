@@ -1,129 +1,129 @@
 @startuml
 !theme mars
 
-title AWSGateKeeper — Security Scan Sequence
+title AWSGateKeeper — 安全扫描时序图
 
-actor "Security\nOperator" as op
-participant "API Gateway\nor HTTP :8000" as gw
+actor "安全\n操作员" as op
+participant "API Gateway\n或 HTTP :8000" as gw
 participant "Lambda\nHandleRequest" as lambda
-participant "ScanOrchestrator\n(concurrent)" as orch
-participant "GuardDuty\nClient" as gd
-participant "Inspector\nClient" as insp
-participant "Detective\nClient" as det
-participant "IAM\nService" as iam
-participant "Report\nBuilder" as report
-participant "S3\nAudit Bucket" as s3
-participant "SIEM\nEndpoint" as siem
+participant "扫描编排器\n(并发)" as orch
+participant "GuardDuty\n客户端" as gd
+participant "Inspector\n客户端" as insp
+participant "Detective\n客户端" as det
+participant "IAM\n服务" as iam
+participant "报告\n生成器" as report
+participant "S3\n审计桶" as s3
+participant "SIEM\n端点" as siem
 
-== Init Phase (Cold Start) ==
+== 初始化阶段（冷启动） ==
 lambda -> lambda : aws.Initialize(ctx)\nSTS GetCallerIdentity
 lambda -> lambda : ServeLambdaEndpoint()
 
-== Security Scan Request ==
+== 安全扫描请求 ==
 op -> gw : POST /security/scan
 gw -> lambda : HandleAPIGatewayEvent
 
 lambda -> orch : RunFullScan(ctx)
 activate orch
 
-== Parallel Scan Phase (errgroup) ==
+== 并行扫描阶段（errgroup） ==
 orch -> gd : ListActiveFindings(detectorID, 24h)
 orch -> insp : ListContainerFindings(24h)
 activate gd
 activate insp
 
-gd -> gd : paginated ListFindings\n+ GetFindings detail
-gd -> gd : parseGuardDutyFinding()\nclassify severity + compromise
+gd -> gd : 分页 ListFindings\n+ GetFindings 详情
+gd -> gd : parseGuardDutyFinding()\n分类严重级别 + 受损状态
 gd --> orch : []GuardDutyFinding
 
-insp -> insp : paginated ListFindings\n(full objects returned)
-insp -> insp : parseInspectorFinding()\nextract CVE + CVSS + package
+insp -> insp : 分页 ListFindings\n（直接返回完整对象）
+insp -> insp : parseInspectorFinding()\n提取 CVE + CVSS + 包信息
 insp --> orch : []InspectorFinding
 
 deactivate gd
 deactivate insp
 
-== GuardDuty Actions ==
-loop each ConfirmedCompromised finding
+== GuardDuty 自动操作 ==
+loop 每条 ConfirmedCompromised 发现
     orch -> gd : DisableCompromisedCredentials()
     gd -> iam : ListAccessKeys(userName)
     iam --> gd : AccessKeyMetadata[]
-    loop each Active key
+    loop 每条活跃密钥
         gd -> iam : UpdateAccessKey(INACTIVE)
-        iam --> gd : disabled
+        iam --> gd : 已停用
     end
-    gd --> orch : []disabledKeyIDs
+    gd --> orch : []已停用的密钥 ID
 end
 
-== Inspector Logging ==
+== Inspector 日志记录 ==
 orch -> insp : LogCVEs(findings)
-insp -> insp : structured log per CVE
+insp -> insp : 每条 CVE 结构化日志
 
-== Detective Investigation (High Severity) ==
-loop each Severity >= High finding
+== Detective 调查（高严重级别） ==
+loop 每条 Severity >= High 的发现
     orch -> det : InvestigateFinding(findingID, resourceARN, 24h)
-    det -> det : CloudTrail LookupEvents\nby resource ARN
-    det -> det : buildRootCause()\nIP-hop analysis
-    det -> det : buildRecommendation()\nsensitive ops analysis
+    det -> det : CloudTrail LookupEvents\n按资源 ARN 查询
+    det -> det : buildRootCause()\nIP 跳变分析
+    det -> det : buildRecommendation()\n敏感操作分析
     det --> orch : InvestigationResult
 end
 
-== Report Generation ==
+== 报告生成 ==
 orch -> report : BuildReport(findings, investigations, actions)
-report -> report : renderMarkdown()\nGitHub-flavoured tables
+report -> report : renderMarkdown()\nGitHub 风格表格
 report --> orch : SecurityReport { Markdown, Summary }
 
-== Delivery (goroutines) ==
+== 投递（goroutine） ==
 orch -> s3 : SaveReportToS3()\nPUT security-reports/YYYY/MM/DD/{id}.md
-orch -> siem : SendToMessagingEndpoint()\nPOST JSON payload
+orch -> siem : SendToMessagingEndpoint()\nPOST JSON 负载
 deactivate orch
 
 lambda --> gw : 200 { report_id, summary, markdown }
-gw --> op : JSON response
+gw --> op : JSON 响应
 
 @enduml
 
 @startuml
 !theme mars
 
-title AWSGateKeeper — Cold Start Lifecycle
+title AWSGateKeeper — 冷启动生命周期
 
-concise "Lambda Instance" as li
+concise "Lambda 实例" as li
 
 @0
-li is "Init" as init
+li is "初始化" as init
 @1
-li is "Ready" as ready
+li is "就绪" as ready
 @2
-li is "Processing" as proc
+li is "处理中" as proc
 @3
-li is "Idle" as idle
+li is "空闲" as idle
 
 @0
 note right of li
-  **main() executes:**
+  **main() 执行：**
   1. preference.init()
-     → find aws-config.yaml
+     → 查找 aws-config.yaml
      → os.Setenv(AWS_*)
   2. aws.Initialize(ctx)
      → LoadDefaultConfig
      → STS GetCallerIdentity
   3. ServeLambdaEndpoint()
-     → register routes
-     → lambda.Start or http.Listen
-  Duration: ~500ms-2s
+     → 注册路由
+     → lambda.Start 或 http.Listen
+  耗时：~500ms-2s
 end note
 
 @2
 note right of li
-  **API Gateway invocation:**
+  **API Gateway 调用：**
   POST /security/scan
-  → GuardDuty (paginated)
-  → Inspector (paginated)
-  → Detective (CloudTrail)
-  → Report generation
-  → S3 + SIEM delivery
-  Duration: ~2-30s
+  → GuardDuty（分页）
+  → Inspector（分页）
+  → Detective（CloudTrail）
+  → 报告生成
+  → S3 + SIEM 投递
+  耗时：~2-30s
 end note
 
 @enduml
@@ -131,38 +131,38 @@ end note
 @startuml
 !theme mars
 
-title AWSGateKeeper — SIEM Forwarding Flow
+title AWSGateKeeper — SIEM 转发流
 
-participant "AuditEvent\nCreated" as audit
+participant "审计事件\n已创建" as audit
 participant "WriteAuditEvent()" as write
 participant "stdout\nCloudWatch" as cw
 participant "siem.Send()" as send
-participant "HTTP Client\n(goroutine)" as http
-participant "SIEM Backend\nSplunk/Datadog" as siem
+participant "HTTP 客户端\n(goroutine)" as http
+participant "SIEM 后端\nSplunk/Datadog" as siem
 
 audit -> write : AuditEvent { action, user, resource }
 write -> cw : JSON → CloudWatch Logs
-write -> send : fire-and-forget
+write -> send : fire-and-forget（异步）
 
 send -> send : newForwarder()\nSIEM_ENABLED? backend? endpoint?
 alt SIEM_ENABLED != "true"
-    send -> send : no-op return
-else enabled
+    send -> send : 静默跳过（no-op）
+else 已启用
     send -> http : go sendWithRetry(event)
-    http -> http : marshalEvent()\nSplunk: { event, sourcetype, time }\nGeneric: raw JSON
+    http -> http : marshalEvent()\nSplunk: { event, sourcetype, time }\n通用: 原始 JSON
     loop attempt <= retries
         http -> siem : POST {endpoint}\nAuthorization: Splunk/Bearer token
         alt 2xx
-            siem --> http : success
+            siem --> http : 成功
         else 5xx
-            siem --> http : error
+            siem --> http : 错误
             http -> http : sleep(attempt * 200ms)
         else 4xx
-            siem --> http : error
-            http -> http : break (non-retryable)
+            siem --> http : 错误
+            http -> http : break（不可重试）
         end
     end
-    http --> send : result logged
+    http --> send : 结果已记录
 end
 
 @enduml
