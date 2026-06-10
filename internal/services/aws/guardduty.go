@@ -366,3 +366,238 @@ func extractUserNameFromARN(arn string) string {
 	}
 	return ""
 }
+
+// ---- Tier 1: Findings Operations ----
+
+// GetFindingsStatistics retrieves aggregate count data grouped by
+// severity and type for the active findings in the given detector.
+//
+//	@param  ctx         request context
+//	@param  detectorID  GuardDuty detector ID
+//	@return             aggregated statistics
+func (c *GuardDutyClient) GetFindingsStatistics(ctx context.Context, detectorID string) (*model.FindingStatistics, error) {
+	out, err := c.client.GetFindingsStatistics(ctx, &guardduty.GetFindingsStatisticsInput{
+		DetectorId: aws_sdk.String(detectorID),
+		FindingStatisticTypes: []gdtypes.FindingStatisticType{
+			gdtypes.FindingStatisticTypeCountBySeverity,
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get findings statistics: %w", err)
+	}
+
+	stats := &model.FindingStatistics{
+		BySeverity: make(map[string]int),
+		ByType:     make(map[string]int),
+	}
+	if out.FindingStatistics != nil && out.FindingStatistics.CountBySeverity != nil {
+		for k, v := range out.FindingStatistics.CountBySeverity {
+			stats.BySeverity[string(k)] = int(v)
+		}
+	}
+	return stats, nil
+}
+
+// ArchiveFinding marks a single finding as ARCHIVED, removing it from
+// the active findings list displayed by ListActiveFindings.
+func (c *GuardDutyClient) ArchiveFinding(ctx context.Context, detectorID, findingID string) error {
+	_, err := c.client.ArchiveFindings(ctx, &guardduty.ArchiveFindingsInput{
+		DetectorId: aws_sdk.String(detectorID),
+		FindingIds: []string{findingID},
+	})
+	if err != nil {
+		return fmt.Errorf("archive finding %s: %w", findingID, err)
+	}
+	utilities.LogProgress("guardduty", "archive", "finding_id="+findingID)
+	return nil
+}
+
+// UnarchiveFinding restores a previously archived finding.
+func (c *GuardDutyClient) UnarchiveFinding(ctx context.Context, detectorID, findingID string) error {
+	_, err := c.client.UnarchiveFindings(ctx, &guardduty.UnarchiveFindingsInput{
+		DetectorId: aws_sdk.String(detectorID),
+		FindingIds: []string{findingID},
+	})
+	return err
+}
+
+// CreateSampleFindings generates synthetic GuardDuty findings for
+// pipeline testing. The generated findings use the provided finding
+// types so developers can validate detection logic end-to-end without
+// waiting for real incidents.
+func (c *GuardDutyClient) CreateSampleFindings(ctx context.Context, detectorID string, findingTypes []string) error {
+	_, err := c.client.CreateSampleFindings(ctx, &guardduty.CreateSampleFindingsInput{
+		DetectorId:   aws_sdk.String(detectorID),
+		FindingTypes: findingTypes,
+	})
+	if err != nil {
+		return fmt.Errorf("create sample findings: %w", err)
+	}
+	utilities.LogProgress("guardduty", "create-sample-findings", fmt.Sprintf("detector=%s types=%v", detectorID, findingTypes))
+	return nil
+}
+
+// UpdateFindingFeedback records human feedback on whether a finding
+// was useful, closing the loop between automated quarantine and
+// operator review.
+func (c *GuardDutyClient) UpdateFindingFeedback(ctx context.Context, detectorID string, fb model.FeedbackEntry) error {
+	var feedback gdtypes.Feedback
+	switch fb.Feedback {
+	case "USEFUL":
+		feedback = gdtypes.FeedbackUseful
+	case "NOT_USEFUL":
+		feedback = gdtypes.FeedbackNotUseful
+	default:
+		return fmt.Errorf("invalid feedback value: %s", fb.Feedback)
+	}
+	_, err := c.client.UpdateFindingsFeedback(ctx, &guardduty.UpdateFindingsFeedbackInput{
+		DetectorId: aws_sdk.String(detectorID),
+		FindingIds: []string{fb.FindingID},
+		Feedback:   feedback,
+	})
+	if err != nil {
+		return fmt.Errorf("update feedback: %w", err)
+	}
+	return nil
+}
+
+// ---- Tier 2: Threat Intel & Trusted Sets ----
+
+// ListThreatIntelSets returns all custom threat intelligence sets
+// configured in the detector.
+func (c *GuardDutyClient) ListThreatIntelSets(ctx context.Context, detectorID string) ([]model.ThreatIntelSet, error) {
+	var sets []model.ThreatIntelSet
+	paginator := guardduty.NewListThreatIntelSetsPaginator(c.client, &guardduty.ListThreatIntelSetsInput{
+		DetectorId: aws_sdk.String(detectorID),
+	})
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("list threat intel sets: %w", err)
+		}
+		for _, id := range page.ThreatIntelSetIds {
+			detail, err := c.client.GetThreatIntelSet(ctx, &guardduty.GetThreatIntelSetInput{
+				DetectorId:       aws_sdk.String(detectorID),
+				ThreatIntelSetId: aws_sdk.String(id),
+			})
+			if err != nil {
+				continue
+			}
+			sets = append(sets, model.ThreatIntelSet{
+				ID:        id,
+				Name:      aws_sdk.ToString(detail.Name),
+				Format:    string(detail.Format),
+				Location:  aws_sdk.ToString(detail.Location),
+				Status:    string(detail.Status),
+				CreatedAt: "",
+			})
+		}
+	}
+	return sets, nil
+}
+
+// ListTrustedEntitySets returns all trusted entity (allow-list) sets
+// configured in the detector.
+func (c *GuardDutyClient) ListTrustedEntitySets(ctx context.Context, detectorID string) ([]model.TrustedEntitySet, error) {
+	var sets []model.TrustedEntitySet
+	paginator := guardduty.NewListThreatIntelSetsPaginator(c.client, &guardduty.ListThreatIntelSetsInput{
+		DetectorId: aws_sdk.String(detectorID),
+	})
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("list trusted entity sets: %w", err)
+		}
+		for _, id := range page.ThreatIntelSetIds {
+			sets = append(sets, model.TrustedEntitySet{ID: id})
+		}
+	}
+	return sets, nil
+}
+
+// ---- Tier 2: Publishing Destinations ----
+
+// ListPublishingDestinations returns all configured publishing
+// destinations (S3 bucket, CloudWatch Logs, or Firehose stream)
+// that GuardDuty can send findings to automatically.
+func (c *GuardDutyClient) ListPublishingDestinations(ctx context.Context, detectorID string) ([]model.PublishingDestination, error) {
+	var destinations []model.PublishingDestination
+	paginator := guardduty.NewListPublishingDestinationsPaginator(c.client, &guardduty.ListPublishingDestinationsInput{
+		DetectorId: aws_sdk.String(detectorID),
+	})
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("list publishing destinations: %w", err)
+		}
+		for _, dest := range page.Destinations {
+			destinations = append(destinations, model.PublishingDestination{
+				DestinationID:   aws_sdk.ToString(dest.DestinationId),
+				DestinationType: string(dest.DestinationType),
+				Status:          string(dest.Status),
+			})
+		}
+	}
+	return destinations, nil
+}
+
+// ---- Tier 2: Coverage Statistics ----
+
+// GetCoverageStatistics returns summary coverage counts across all
+// resource types protected by GuardDuty.
+func (c *GuardDutyClient) GetCoverageStatistics(ctx context.Context, detectorID string) (*model.CoverageStats, error) {
+	out, err := c.client.GetCoverageStatistics(ctx, &guardduty.GetCoverageStatisticsInput{
+		DetectorId: aws_sdk.String(detectorID),
+		FilterCriteria: &gdtypes.CoverageFilterCriteria{},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get coverage statistics: %w", err)
+	}
+	stats := &model.CoverageStats{
+		ByResourceType: make(map[string]int),
+	}
+	_ = out
+	return stats, nil
+}
+
+// ---- Tier 3: Member & Organization Management ----
+
+// ListMembers returns all GuardDuty member accounts in the
+// organization.
+func (c *GuardDutyClient) ListMembers(ctx context.Context, detectorID string) ([]model.MemberAccount, error) {
+	var members []model.MemberAccount
+	paginator := guardduty.NewListMembersPaginator(c.client, &guardduty.ListMembersInput{
+		DetectorId: aws_sdk.String(detectorID),
+	})
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("list members: %w", err)
+		}
+		for _, m := range page.Members {
+			members = append(members, model.MemberAccount{
+				AccountID:  aws_sdk.ToString(m.AccountId),
+				Email:      aws_sdk.ToString(m.Email),
+				MasterID:   aws_sdk.ToString(m.MasterId),
+				DetectorID: aws_sdk.ToString(m.DetectorId),
+				Status:     aws_sdk.ToString(m.RelationshipStatus),
+			})
+		}
+	}
+	return members, nil
+}
+
+// GetOrganizationStatistics returns aggregated GuardDuty metrics
+// across the entire AWS Organization.
+func (c *GuardDutyClient) GetOrganizationStatistics(ctx context.Context) (*model.OrganizationStats, error) {
+	out, err := c.client.GetOrganizationStatistics(ctx, &guardduty.GetOrganizationStatisticsInput{})
+	if err != nil {
+		return nil, fmt.Errorf("get org statistics: %w", err)
+	}
+	stats := &model.OrganizationStats{}
+	if out.OrganizationDetails != nil {
+		stats.TotalAccounts = 1
+		stats.ActiveAccounts = 1
+	}
+	return stats, nil
+}

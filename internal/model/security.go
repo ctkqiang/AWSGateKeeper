@@ -120,3 +120,81 @@ type MessagingPayload struct {
 	Findings    int    `json:"total_findings"`
 	Critical    int    `json:"critical_count"`
 }
+
+// FindingStatistics mirrors GuardDuty GetFindingsStatistics output,
+// providing aggregate counts by severity level.
+type FindingStatistics struct {
+	Total          int            `json:"total"`
+	BySeverity     map[string]int `json:"by_severity"`
+	ByType         map[string]int `json:"by_type"`
+	ActiveCount    int            `json:"active"`
+	ArchivedCount  int            `json:"archived"`
+	GeneratedAt    string         `json:"generated_at"`
+}
+
+// ThreatIntelSet represents a custom threat intelligence feed
+// (malicious IPs/domains) uploaded to GuardDuty.
+type ThreatIntelSet struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Format     string `json:"format"`
+	Location   string `json:"location"`
+	Status     string `json:"status"`
+	CreatedAt  string `json:"created_at"`
+}
+
+// TrustedEntitySet represents an allow-list of known-safe IPs or
+// domains used to suppress GuardDuty false positives.
+type TrustedEntitySet struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Format     string `json:"format"`
+	Location   string `json:"location"`
+	Status     string `json:"status"`
+	CreatedAt  string `json:"created_at"`
+}
+
+// PublishingDestination represents a GuardDuty publishing destination
+// (S3, CloudWatch Logs, or Firehose delivery stream).
+type PublishingDestination struct {
+	DestinationID   string `json:"destination_id"`
+	DestinationType string `json:"destination_type"`
+	Status          string `json:"status"`
+	DestinationARN  string `json:"destination_arn"`
+}
+
+// CoverageStats summarizes GuardDuty resource coverage across
+// EC2, ECS, EKS, S3, and Lambda.
+type CoverageStats struct {
+	TotalResources  int            `json:"total_resources"`
+	CoveredResources int           `json:"covered_resources"`
+	CoveragePercent float64        `json:"coverage_percent"`
+	ByResourceType  map[string]int `json:"by_resource_type"`
+}
+
+// MemberAccount represents a GuardDuty member account in an
+// AWS Organization.
+type MemberAccount struct {
+	AccountID    string `json:"account_id"`
+	Email        string `json:"email"`
+	MasterID     string `json:"master_id"`
+	Relationship string `json:"relationship"`
+	DetectorID   string `json:"detector_id,omitempty"`
+	Status       string `json:"status"`
+}
+
+// OrganizationStats mirrors GuardDuty GetOrganizationStatistics.
+type OrganizationStats struct {
+	TotalAccounts    int `json:"total_accounts"`
+	ActiveAccounts   int `json:"active_accounts"`
+	Members          int `json:"members"`
+	EnabledDetectors int `json:"enabled_detectors"`
+}
+
+// FeedbackEntry records a GuardDuty finding feedback submission.
+type FeedbackEntry struct {
+	FindingID string `json:"finding_id"`
+	Feedback  string `json:"feedback"` // USEFUL or NOT_USEFUL
+	Comment   string `json:"comment,omitempty"`
+}
+

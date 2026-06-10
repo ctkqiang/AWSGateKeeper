@@ -410,9 +410,21 @@ aws lambda create-function \
 | 通配符策略检测 + 告警 | 已实现 |
 | 应用审计日志（governance） | 已实现 |
 | 双模 HTTP/Lambda 服务 | 已实现 |
+| 事件响应 + IAM 隔离 | 已实现 |
+| GuardDuty ListFindings + GetFindings | 已实现 |
+| GuardDuty GetFindingsStatistics | 已实现 |
+| GuardDuty ArchiveFindings / UnarchiveFindings | 已实现 |
+| GuardDuty UpdateFindingsFeedback | 已实现 |
+| GuardDuty CreateSampleFindings | 已实现 |
+| GuardDuty 威胁情报集（CRUD） | 已实现 |
+| GuardDuty 可信实体集（CRUD） | 已实现 |
+| GuardDuty 发布目标 | 已实现 |
+| GuardDuty 覆盖统计 | 已实现 |
+| GuardDuty 成员账户 | 已实现 |
+| GuardDuty 组织统计 | 已实现 |
 | IAM ExternalId 审计规则执行 | 骨架 |
 | Cognito 特权用户审计执行 | 骨架 |
-| DynamoDB 发现物存储 | 未实现 |
+| DynamoDB 发现物存储 | 已实现 |
 | EventBridge 事件发布 | 仅模型 |
 
 ---

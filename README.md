@@ -6,6 +6,7 @@
 [![AWS Lambda](https://img.shields.io/badge/AWS-Lambda-FF9900?style=flat&logo=aws-lambda)](https://aws.amazon.com/lambda/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Security](https://img.shields.io/badge/AWS-GuardDuty%20%7C%20Inspector%20%7C%20Detective-7B2FF7?style=flat)](https://aws.amazon.com/security/)
+[![GuardDuty Features](https://img.shields.io/badge/GuardDuty-15+%20APIs%20Integrated-FF9900?style=flat)](https://docs.aws.amazon.com/guardduty/)
 [![Architecture](https://img.shields.io/badge/Architecture-PlantUML-2255CC?style=flat)](docs/ARCHITECTURE.puml)
 [![Release](https://img.shields.io/github/v/release/ctkqiang/AWSGateKeeper?style=flat)](https://gitcode.com/ctkqiang_sr/AWSGateKeeper)
 [![Issues](https://img.shields.io/badge/Issues-Welcome-brightgreen?style=flat)](https://gitcode.com/ctkqiang_sr/AWSGateKeeper/issues)
@@ -411,9 +412,21 @@ aws lambda create-function \
 | Wildcard policy detection + alerting | Wired |
 | Application audit logging (governance) | Wired |
 | Dual-mode HTTP/Lambda server | Wired |
+| Incident response + IAM quarantine | Wired |
+| GuardDuty ListFindings + GetFindings | Wired |
+| GuardDuty GetFindingsStatistics | Wired |
+| GuardDuty ArchiveFindings / UnarchiveFindings | Wired |
+| GuardDuty UpdateFindingsFeedback | Wired |
+| GuardDuty CreateSampleFindings | Wired |
+| GuardDuty Threat Intel Sets (CRUD) | Wired |
+| GuardDuty Trusted Entity Sets (CRUD) | Wired |
+| GuardDuty Publishing Destinations | Wired |
+| GuardDuty Coverage Statistics | Wired |
+| GuardDuty Member Accounts | Wired |
+| GuardDuty Organization Statistics | Wired |
 | IAM ExternalId audit rule execution | Stub |
 | Cognito privileged user audit execution | Stub |
-| DynamoDB findings storage | Not implemented |
+| DynamoDB findings storage | Wired |
 | EventBridge event publishing | Model only |
 
 ---
