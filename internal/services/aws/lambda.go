@@ -24,26 +24,26 @@ import (
 	"strings"
 	"syscall"
 
-	aws_v2 "github.com/aws/aws-sdk-go-v2/aws"
 	aws_lambda_http "github.com/aws/aws-lambda-go/lambda"
+	aws_v2 "github.com/aws/aws-sdk-go-v2/aws"
 )
 
 const (
 	addr = "0.0.0.0:8000"
 
-	IndexPath              = "/"
-	HealthPath             = "/health"
-	SecurityScanPath       = "/security/scan"
-	SecurityHealthPath     = "/security/health"
+	IndexPath          = "/"
+	HealthPath         = "/health"
+	SecurityScanPath   = "/security/scan"
+	SecurityHealthPath = "/security/health"
 
-	GDStatsPath            = "/guardduty/statistics"
-	GDArchivePath          = "/guardduty/findings"
-	GDSamplePath           = "/guardduty/sample"
-	GDIntelPath            = "/guardduty/threat-intel"
-	GDDestinationsPath     = "/guardduty/destinations"
-	GDCoveragePath         = "/guardduty/coverage"
-	GDMembersPath          = "/guardduty/members"
-	GDOrgStatsPath         = "/guardduty/organization-stats"
+	GDStatsPath        = "/guardduty/statistics"
+	GDArchivePath      = "/guardduty/findings"
+	GDSamplePath       = "/guardduty/sample"
+	GDIntelPath        = "/guardduty/threat-intel"
+	GDDestinationsPath = "/guardduty/destinations"
+	GDCoveragePath     = "/guardduty/coverage"
+	GDMembersPath      = "/guardduty/members"
+	GDOrgStatsPath     = "/guardduty/organization-stats"
 
 	CreateUserPath = "/create-user"
 )
@@ -55,7 +55,7 @@ const (
 // and call the first matching entry.
 var lambdaRoutes []routeEntry
 
-func initRoutes(cfg aws_v2.Config, scanFunc routes.ScanFunc, healthFunc routes.HealthFunc, gdFactory routes.GDFactory) {
+func initRoutes(scanFunc routes.ScanFunc, healthFunc routes.HealthFunc, gdFactory routes.GDFactory) {
 	lambdaRoutes = []routeEntry{
 		{IndexPath, routes.Index},
 		{HealthPath, routes.Health},
@@ -122,7 +122,8 @@ func (r *responseRecorder) WriteHeader(code int) { r.statusCode = code }
 // between the services/aws and services/security packages.
 func ServeLambdaEndpoint(scanFunc routes.ScanFunc, healthFunc routes.HealthFunc, gdFactory routes.GDFactory) error {
 	cfg := GetAccount().Config()
-	initRoutes(cfg, scanFunc, healthFunc, gdFactory)
+	var _ aws_v2.Config = cfg
+	initRoutes(scanFunc, healthFunc, gdFactory)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc(IndexPath, logRequest(routes.Index))
