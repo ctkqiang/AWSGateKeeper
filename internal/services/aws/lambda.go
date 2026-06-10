@@ -31,10 +31,19 @@ import (
 const (
 	addr = "0.0.0.0:8000"
 
-	IndexPath         = "/"
-	HealthPath        = "/health"
-	SecurityScanPath  = "/security/scan"
-	SecurityHealthPath = "/security/health"
+	IndexPath              = "/"
+	HealthPath             = "/health"
+	SecurityScanPath       = "/security/scan"
+	SecurityHealthPath     = "/security/health"
+
+	GDStatsPath            = "/guardduty/statistics"
+	GDArchivePath          = "/guardduty/findings"
+	GDSamplePath           = "/guardduty/sample"
+	GDIntelPath            = "/guardduty/threat-intel"
+	GDDestinationsPath     = "/guardduty/destinations"
+	GDCoveragePath         = "/guardduty/coverage"
+	GDMembersPath          = "/guardduty/members"
+	GDOrgStatsPath         = "/guardduty/organization-stats"
 
 	CreateUserPath = "/create-user"
 )
@@ -46,12 +55,20 @@ const (
 // and call the first matching entry.
 var lambdaRoutes []routeEntry
 
-func initRoutes(cfg aws_v2.Config, scanFunc routes.ScanFunc, healthFunc routes.HealthFunc) {
+func initRoutes(cfg aws_v2.Config, scanFunc routes.ScanFunc, healthFunc routes.HealthFunc, gdFactory routes.GDFactory) {
 	lambdaRoutes = []routeEntry{
 		{IndexPath, routes.Index},
 		{HealthPath, routes.Health},
 		{SecurityScanPath, routes.SecurityScanHandler(scanFunc)},
 		{SecurityHealthPath, routes.SecurityHealthHandler(healthFunc)},
+		{GDStatsPath, routes.GuardDutyStatsHandler(gdFactory)},
+		{GDArchivePath, routes.GuardDutyArchiveHandler(gdFactory)},
+		{GDSamplePath, routes.GuardDutySampleHandler(gdFactory)},
+		{GDIntelPath, routes.GuardDutyIntelHandler(gdFactory)},
+		{GDDestinationsPath, routes.GuardDutyPublishingHandler(gdFactory)},
+		{GDCoveragePath, routes.GuardDutyCoverageHandler(gdFactory)},
+		{GDMembersPath, routes.GuardDutyMembersHandler(gdFactory)},
+		{GDOrgStatsPath, routes.GuardDutyOrgStatsHandler(gdFactory)},
 	}
 }
 
@@ -103,15 +120,23 @@ func (r *responseRecorder) WriteHeader(code int) { r.statusCode = code }
 //
 // scanFunc and healthFunc are injected by main.go to avoid import cycles
 // between the services/aws and services/security packages.
-func ServeLambdaEndpoint(scanFunc routes.ScanFunc, healthFunc routes.HealthFunc) error {
+func ServeLambdaEndpoint(scanFunc routes.ScanFunc, healthFunc routes.HealthFunc, gdFactory routes.GDFactory) error {
 	cfg := GetAccount().Config()
-	initRoutes(cfg, scanFunc, healthFunc)
+	initRoutes(cfg, scanFunc, healthFunc, gdFactory)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc(IndexPath, logRequest(routes.Index))
 	mux.HandleFunc(HealthPath, logRequest(routes.Health))
 	mux.HandleFunc(SecurityScanPath, logRequest(routes.SecurityScanHandler(scanFunc)))
 	mux.HandleFunc(SecurityHealthPath, logRequest(routes.SecurityHealthHandler(healthFunc)))
+	mux.HandleFunc(GDStatsPath, logRequest(routes.GuardDutyStatsHandler(gdFactory)))
+	mux.HandleFunc(GDArchivePath, logRequest(routes.GuardDutyArchiveHandler(gdFactory)))
+	mux.HandleFunc(GDSamplePath, logRequest(routes.GuardDutySampleHandler(gdFactory)))
+	mux.HandleFunc(GDIntelPath, logRequest(routes.GuardDutyIntelHandler(gdFactory)))
+	mux.HandleFunc(GDDestinationsPath, logRequest(routes.GuardDutyPublishingHandler(gdFactory)))
+	mux.HandleFunc(GDCoveragePath, logRequest(routes.GuardDutyCoverageHandler(gdFactory)))
+	mux.HandleFunc(GDMembersPath, logRequest(routes.GuardDutyMembersHandler(gdFactory)))
+	mux.HandleFunc(GDOrgStatsPath, logRequest(routes.GuardDutyOrgStatsHandler(gdFactory)))
 
 	if isLambdaRuntime() {
 		aws_lambda_http.Start(HandleAPIGatewayEvent)

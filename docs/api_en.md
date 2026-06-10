@@ -8,6 +8,14 @@
 | `GET` | `/health` | None | Service health check |
 | `POST` | `/security/scan` | IAM (SDK) | Execute full security scan |
 | `GET` | `/security/health` | IAM (SDK) | Security subsystem health |
+| `GET` | `/guardduty/statistics` | IAM (SDK) | Finding counts by severity |
+| `POST` | `/guardduty/findings` | IAM (SDK) | Archive / unarchive findings |
+| `POST` | `/guardduty/sample` | IAM (SDK) | Generate synthetic test findings |
+| `GET` | `/guardduty/threat-intel` | IAM (SDK) | List custom threat intelligence sets |
+| `GET` | `/guardduty/destinations` | IAM (SDK) | List publishing destinations |
+| `GET` | `/guardduty/coverage` | IAM (SDK) | Resource coverage statistics |
+| `GET` | `/guardduty/members` | IAM (SDK) | List organization member accounts |
+| `GET` | `/guardduty/organization-stats` | IAM (SDK) | Aggregated organization metrics |
 
 ## GET /
 

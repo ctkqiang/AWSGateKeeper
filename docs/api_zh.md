@@ -8,6 +8,14 @@
 | `GET` | `/health` | 无 | 服务健康检查 |
 | `POST` | `/security/scan` | IAM (SDK) | 执行完整安全扫描 |
 | `GET` | `/security/health` | IAM (SDK) | 安全子系统健康状态 |
+| `GET` | `/guardduty/statistics` | IAM (SDK) | 按严重级别统计发现数量 |
+| `POST` | `/guardduty/findings` | IAM (SDK) | 归档 / 取消归档发现 |
+| `POST` | `/guardduty/sample` | IAM (SDK) | 生成合成测试发现 |
+| `GET` | `/guardduty/threat-intel` | IAM (SDK) | 列出自定义威胁情报集 |
+| `GET` | `/guardduty/destinations` | IAM (SDK) | 列出发布目标 |
+| `GET` | `/guardduty/coverage` | IAM (SDK) | 资源覆盖统计 |
+| `GET` | `/guardduty/members` | IAM (SDK) | 列出组织成员账户 |
+| `GET` | `/guardduty/organization-stats` | IAM (SDK) | 聚合组织指标 |
 
 ## GET /
 
