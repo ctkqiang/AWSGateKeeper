@@ -8,15 +8,17 @@ AWS security auditing gateway with automated IAM role governance, real-time wild
 |----------|-------------|
 | [Architecture](architecture_en.md) | System architecture, layered design, package dependency graph |
 | [Security Subsystem](security_en.md) | GuardDuty, Inspector, Detective integration, scan orchestration, report generation |
-| [API Reference](api_en.md) | HTTP endpoints, request/response formats, error codes |
+| [API Reference](api_en.md) | HTTP endpoints (18 endpoints), request/response formats |
+| [Security Maturity](security_en.md) | SOC 2, PCI-DSS compliance, IR phase tracking, KPI metrics, SLA auto-escalation |
 | [Deployment](deployment_en.md) | Lambda deployment, Docker, environment variables, IAM permissions |
 | [Development](development_en.md) | Local development, testing, project structure conventions |
 
 ## Quick Links
 
 - [Chinese Documentation](index_zh.md)
-- [PlantUML Diagrams](ARCHITECTURE.puml)
+- [PlantUML Diagrams](ARCHITECTURE_EN.puml)
 - [Project README](../README.md)
+- [AWS Security Maturity Model](https://maturitymodel.security.aws.dev/en/4.-optimized/security-orchestration-ticketing/)
 
 ## Architecture Diagrams
 
@@ -38,10 +40,13 @@ Render with: `plantuml docs/ARCHITECTURE.puml -o ../out/docs/ARCHITECTURE`
 | Cognito | User pool privileged group audit | `cognitoidentityprovider` |
 | S3 | Audit log persistence, CloudTrail bucket management | `s3` |
 | STS | Caller identity verification | `sts` |
-| EventBridge | Event publishing (model defined) | *(pending)* |
+| EventBridge | Event publishing (quarantine + scan completed events) | `eventbridge` |
+| Security Hub | Bidirectional finding sync | `securityhub` |
+| CloudWatch | Custom metrics publishing | `cloudwatch` |
 
 ## References
 
+- [AWS Security Maturity Model — Security Orchestration & Ticketing](https://maturitymodel.security.aws.dev/en/4.-optimized/security-orchestration-ticketing/)
 - [AWS Lambda Go Documentation](https://docs.aws.amazon.com/lambda/latest/dg/golang-handler.html)
 - [AWS GuardDuty User Guide](https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html)
 - [AWS Inspector User Guide](https://docs.aws.amazon.com/inspector/latest/user/what-is-inspector.html)

@@ -422,10 +422,20 @@ aws lambda create-function \
 | GuardDuty 覆盖统计 | 已实现 |
 | GuardDuty 成员账户 | 已实现 |
 | GuardDuty 组织统计 | 已实现 |
+| EventBridge 发布（隔离 + 扫描事件） | 已实现 |
+| Security Hub 集成（双向） | 已实现 |
+| Cognito 外部用户审计引擎 | 已实现 |
+| IR 阶段跟踪（Detect→Recovery） | 已实现 |
+| SLA 自动升级跟踪器 | 已实现 |
+| KPI 仪表盘（MTTD/MTTC/MTTR） | 已实现 |
+| S3 审计生命周期（90天 Glacier, 365天过期） | 已实现 |
+| 隔离回滚（DELETE 端点） | 已实现 |
+| 令牌桶限流器 | 已实现 |
+| 输入验证（ARN、策略、detectorID） | 已实现 |
+| 单元测试（security 包） | 已实现 |
 | IAM ExternalId 审计规则执行 | 骨架 |
-| Cognito 特权用户审计执行 | 骨架 |
 | DynamoDB 发现物存储 | 已实现 |
-| EventBridge 事件发布 | 仅模型 |
+| EventBridge 事件发布 | 已实现 |
 
 ---
 

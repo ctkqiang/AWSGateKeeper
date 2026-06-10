@@ -16,6 +16,11 @@
 | `GET` | `/guardduty/coverage` | IAM (SDK) | 资源覆盖统计 |
 | `GET` | `/guardduty/members` | IAM (SDK) | 列出组织成员账户 |
 | `GET` | `/guardduty/organization-stats` | IAM (SDK) | 聚合组织指标 |
+| `DELETE` | `/guardduty/quarantine/{arn}` | IAM (SDK) | 移除身份的 Deny-* 隔离策略 |
+| `POST` | `/guardduty/quarantine` | IAM (SDK) | 立即强制隔离指定身份 |
+| `GET` | `/security/kpi` | IAM (SDK) | KPI 仪表盘（MTTD/MTTC/MTTR/SLA） |
+| `PATCH` | `/security/incident/{id}/phase` | IAM (SDK) | 推进 IR 阶段（Detect→Recovery） |
+| `PATCH` | `/security/incident/{id}/owner` | IAM (SDK) | 转移事件所有权 |
 
 ## GET /
 

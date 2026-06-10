@@ -424,10 +424,20 @@ aws lambda create-function \
 | GuardDuty Coverage Statistics | Wired |
 | GuardDuty Member Accounts | Wired |
 | GuardDuty Organization Statistics | Wired |
+| EventBridge publishing (quarantine + scan) | Wired |
+| Security Hub integration (bidirectional) | Wired |
+| Cognito external user audit engine | Wired |
+| IR phase tracking (Detect→Recovery) | Wired |
+| SLA auto-escalation tracker | Wired |
+| KPI dashboard (MTTD/MTTC/MTTR) | Wired |
+| S3 audit lifecycle (90d Glacier, 365d expire) | Wired |
+| Quarantine rollback (DELETE endpoint) | Wired |
+| Token-bucket rate limiter | Wired |
+| Input validation (ARN, policy, detectorID) | Wired |
+| Unit tests (security package) | Wired |
 | IAM ExternalId audit rule execution | Stub |
-| Cognito privileged user audit execution | Stub |
 | DynamoDB findings storage | Wired |
-| EventBridge event publishing | Model only |
+| EventBridge event publishing | Wired |
 
 ---
 

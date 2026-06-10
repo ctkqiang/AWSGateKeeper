@@ -38,9 +38,13 @@ AWS 安全审计网关，集成 IAM 角色自动化治理、通配符策略实�
 | Cognito | 用户池特权组审计 | `cognitoidentityprovider` |
 | S3 | 审计日志持久化、CloudTrail 桶管理 | `s3` |
 | STS | 调用者身份验证 | `sts` |
-| EventBridge | 事件发布（模型已定义） | *(待实现)* |
+| EventBridge | 事件发布（隔离 + 扫描完成事件） | `eventbridge` |
+| Security Hub | 双向发现同步 | `securityhub` |
+| CloudWatch | 自定义指标发布 | `cloudwatch` |
 
 ## 参考文档
+
+- [AWS 安全成熟度模型 — 安全编排与工单](https://maturitymodel.security.aws.dev/en/4.-optimized/security-orchestration-ticketing/)
 
 - [AWS Lambda Go 开发文档](https://docs.aws.amazon.com/zh_cn/lambda/latest/dg/golang-handler.html)
 - [AWS GuardDuty 用户指南](https://docs.aws.amazon.com/zh_cn/guardduty/latest/ug/what-is-guardduty.html)

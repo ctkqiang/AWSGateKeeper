@@ -16,6 +16,11 @@
 | `GET` | `/guardduty/coverage` | IAM (SDK) | Resource coverage statistics |
 | `GET` | `/guardduty/members` | IAM (SDK) | List organization member accounts |
 | `GET` | `/guardduty/organization-stats` | IAM (SDK) | Aggregated organization metrics |
+| `DELETE` | `/guardduty/quarantine/{arn}` | IAM (SDK) | Remove Deny-* quarantine from an identity |
+| `POST` | `/guardduty/quarantine` | IAM (SDK) | Force-quarantine an identity immediately |
+| `GET` | `/security/kpi` | IAM (SDK) | KPI dashboard (MTTD/MTTC/MTTR/SLA) |
+| `PATCH` | `/security/incident/{id}/phase` | IAM (SDK) | Advance IR phase (Detect→Recovery) |
+| `PATCH` | `/security/incident/{id}/owner` | IAM (SDK) | Transfer incident ownership |
 
 ## GET /
 
