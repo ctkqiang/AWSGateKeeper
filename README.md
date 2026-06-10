@@ -436,6 +436,10 @@ aws lambda create-function \
 | Input validation (ARN, policy, detectorID) | Wired |
 | Unit tests (security package) | Wired |
 | IAM ExternalId audit rule execution | Stub |
+| Access Analyzer correlation (public access) | Wired |
+| Macie sensitive data detection | Wired |
+| Route53 DNS Firewall blocking | Wired |
+| VPC Flow Log pattern analysis | Wired |
 | DynamoDB findings storage | Wired |
 | EventBridge event publishing | Wired |
 

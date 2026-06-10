@@ -41,6 +41,10 @@ AWS 安全审计网关，集成 IAM 角色自动化治理、通配符策略实�
 | EventBridge | 事件发布（隔离 + 扫描完成事件） | `eventbridge` |
 | Security Hub | 双向发现同步 | `securityhub` |
 | CloudWatch | 自定义指标发布 | `cloudwatch` |
+| Access Analyzer | 公开访问发现关联分析 | `accessanalyzer` |
+| Macie | 敏感数据泄露检测 | `macie2` |
+| Route53 Resolver | DNS 防火墙威胁阻断 | `route53resolver` |
+| VPC Flow Logs | 网络模式分析（通过 GuardDuty） | （无直接 SDK 调用） |
 
 ## 参考文档
 

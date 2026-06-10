@@ -435,6 +435,11 @@ aws lambda create-function \
 | 单元测试（security 包） | 已实现 |
 | IAM ExternalId 审计规则执行 | 骨架 |
 | DynamoDB 发现物存储 | 已实现 |
+| Access Analyzer 关联分析（公开访问） | 已实现 |
+| Macie 敏感数据检测 | 已实现 |
+| Route53 DNS 防火墙阻断 | 已实现 |
+| VPC Flow Log 模式分析 | 已实现 |
+| DynamoDB 发现物存储 | 已实现 |
 | EventBridge 事件发布 | 已实现 |
 
 ---

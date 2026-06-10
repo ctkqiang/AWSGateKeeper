@@ -43,6 +43,10 @@ Render with: `plantuml docs/ARCHITECTURE.puml -o ../out/docs/ARCHITECTURE`
 | EventBridge | Event publishing (quarantine + scan completed events) | `eventbridge` |
 | Security Hub | Bidirectional finding sync | `securityhub` |
 | CloudWatch | Custom metrics publishing | `cloudwatch` |
+| Access Analyzer | Public access finding correlation | `accessanalyzer` |
+| Macie | Sensitive data exfiltration detection | `macie2` |
+| Route53 Resolver | DNS Firewall threat blocking | `route53resolver` |
+| VPC Flow Logs | Network pattern analysis (via GuardDuty) | (no direct SDK call) |
 
 ## References
 
