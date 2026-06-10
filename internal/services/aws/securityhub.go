@@ -124,12 +124,12 @@ func (c *SecurityHubClient) UpdateFindingStatus(ctx context.Context, findingID, 
 // SecurityHubFinding is a flattened Security Hub finding suitable for
 // incident correlation and enrichment in the incident response pipeline.
 type SecurityHubFinding struct {
-	ID           string `json:"id"`            // Security Hub finding ID
-	Title        string `json:"title"`         // finding title
-	Description  string `json:"description"`   // full description
-	Severity     string `json:"severity"`      // severity label (CRITICAL, HIGH, ...)
-	ResourceARN  string `json:"resource_arn"`  // primary resource ARN
+	ID           string `json:"id"`             // Security Hub finding ID
+	Title        string `json:"title"`          // finding title
+	Description  string `json:"description"`    // full description
+	Severity     string `json:"severity"`       // severity label (CRITICAL, HIGH, ...)
+	ResourceARN  string `json:"resource_arn"`   // primary resource ARN
 	AWSAccountID string `json:"aws_account_id"` // source account ID
-	CreatedAt    string `json:"created_at"`    // ISO 8601 creation timestamp
-	ProductARN   string `json:"product_arn"`   // originating product ARN
+	CreatedAt    string `json:"created_at"`     // ISO 8601 creation timestamp
+	ProductARN   string `json:"product_arn"`    // originating product ARN
 }

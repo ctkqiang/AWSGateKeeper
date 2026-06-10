@@ -43,13 +43,13 @@ type IncidentRecord struct {
 	ResolvedAt    *time.Time            `json:"resolved_at,omitempty"`
 
 	// Maturity model fields (AWS Security Orchestration & Ticketing).
-	Status         IRPhase           `json:"status"`
+	Status          IRPhase               `json:"status"`
 	PhaseTimestamps map[IRPhase]time.Time `json:"phase_timestamps"`
-	Owner          string            `json:"owner,omitempty"`
-	SLADeadline    *time.Time        `json:"sla_deadline,omitempty"`
-	IOCs           []string          `json:"iocs,omitempty"`
-	EnrichedData   map[string]string `json:"enriched_data,omitempty"`
-	SecurityHubARN string            `json:"securityhub_arn,omitempty"`
+	Owner           string                `json:"owner,omitempty"`
+	SLADeadline     *time.Time            `json:"sla_deadline,omitempty"`
+	IOCs            []string              `json:"iocs,omitempty"`
+	EnrichedData    map[string]string     `json:"enriched_data,omitempty"`
+	SecurityHubARN  string                `json:"securityhub_arn,omitempty"`
 }
 
 // AdvancePhase transitions the incident to the next IR phase and records
@@ -82,20 +82,20 @@ func (r *IncidentRecord) PhaseDuration(from, to IRPhase) time.Duration {
 // QuarantineRecord captures the execution result of a zero-privilege
 // isolation loop applied to a compromised identity.
 type QuarantineRecord struct {
-	TargetARN       string   `json:"target_arn"`
-	TargetType      string   `json:"target_type"`
-	PolicyName      string   `json:"policy_name"`
-	PolicyAttached  bool     `json:"policy_attached"`
-	KeysDeactivated []string `json:"keys_deactivated"`
-	SessionsRevoked bool     `json:"sessions_revoked"`
+	TargetARN       string    `json:"target_arn"`
+	TargetType      string    `json:"target_type"`
+	PolicyName      string    `json:"policy_name"`
+	PolicyAttached  bool      `json:"policy_attached"`
+	KeysDeactivated []string  `json:"keys_deactivated"`
+	SessionsRevoked bool      `json:"sessions_revoked"`
 	ExecutedAt      time.Time `json:"executed_at"`
-	ErrorMessage    string   `json:"error_message,omitempty"`
+	ErrorMessage    string    `json:"error_message,omitempty"`
 }
 
 // QuarantinePolicyDocument is the JSON-serialisable inline policy that
 // applies an explicit Deny on all actions and resources.
 type QuarantinePolicyDocument struct {
-	Version   string                     `json:"Version"`
+	Version   string                      `json:"Version"`
 	Statement []QuarantinePolicyStatement `json:"Statement"`
 }
 

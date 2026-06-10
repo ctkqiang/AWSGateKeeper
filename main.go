@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	aws_gatekeeper_glob "aws_gatekeeper/internal/services/aws"
 	"aws_gatekeeper/internal/routes"
+	aws_gatekeeper_glob "aws_gatekeeper/internal/services/aws"
 	"aws_gatekeeper/internal/services/security"
 )
 

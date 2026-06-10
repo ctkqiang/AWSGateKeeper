@@ -60,10 +60,10 @@ func (p *EventPublisher) PublishSecurityEvent(ctx context.Context, detailType st
 // downstream automation (SIEM alert, Slack notification, CMDB update).
 func (p *EventPublisher) PublishQuarantineEvent(ctx context.Context, userARN, policyName string, keysDisabled int) error {
 	return p.PublishSecurityEvent(ctx, "aws-gatekeeper.quarantine.executed", map[string]interface{}{
-		"user_arn":         userARN,
-		"policy_name":      policyName,
-		"keys_disabled":    keysDisabled,
-		"quarantine_type":  "DenyAllInlinePolicy",
+		"user_arn":        userARN,
+		"policy_name":     policyName,
+		"keys_disabled":   keysDisabled,
+		"quarantine_type": "DenyAllInlinePolicy",
 	})
 }
 

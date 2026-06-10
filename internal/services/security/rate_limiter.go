@@ -54,10 +54,10 @@ func (r *RateLimiter) Wait() {
 
 // Bucket constants for GuardDuty API endpoints.
 const (
-	GDDefaultRate  = 10.0  // requests/sec
-	GDDefaultBurst = 15    // max burst
-	ScanRate       = 1.0   // 1 full scan/sec max
-	ScanBurst      = 2     // allow 2 concurrent scans
+	GDDefaultRate  = 10.0 // requests/sec
+	GDDefaultBurst = 15   // max burst
+	ScanRate       = 1.0  // 1 full scan/sec max
+	ScanBurst      = 2    // allow 2 concurrent scans
 )
 
 var (

@@ -107,15 +107,15 @@ func ExecuteScanAndDeliver(ctx context.Context, mcfg MessagingConfig) (*model.Se
 //	@return         map of public-facing fields
 func BuildScanResponse(report *model.SecurityReport) map[string]interface{} {
 	return map[string]interface{}{
-		"report_id":           report.ReportID,
-		"generated_at":        report.GeneratedAt.Format(time.RFC3339),
-		"summary":             report.Summary,
-		"guardduty_findings":  len(report.GuardDutyFindings),
-		"inspector_findings":  len(report.InspectorFindings),
-		"investigations":      len(report.Investigations),
-		"actions_taken":       report.ActionsTaken,
-		"markdown":            report.Markdown,
-		"status":              "complete",
+		"report_id":          report.ReportID,
+		"generated_at":       report.GeneratedAt.Format(time.RFC3339),
+		"summary":            report.Summary,
+		"guardduty_findings": len(report.GuardDutyFindings),
+		"inspector_findings": len(report.InspectorFindings),
+		"investigations":     len(report.Investigations),
+		"actions_taken":      report.ActionsTaken,
+		"markdown":           report.Markdown,
+		"status":             "complete",
 	}
 }
 
@@ -163,11 +163,11 @@ func BuildHealthResponse(cfg aws_sdk.Config) map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"status":          status,
-		"guardduty":       detectorID != "",
-		"messaging_url":   messagingURL != "",
-		"issues":          issues,
-		"lookback_hours":  getLookbackHours(),
+		"status":         status,
+		"guardduty":      detectorID != "",
+		"messaging_url":  messagingURL != "",
+		"issues":         issues,
+		"lookback_hours": getLookbackHours(),
 	}
 }
 

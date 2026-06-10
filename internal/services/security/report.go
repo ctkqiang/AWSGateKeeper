@@ -37,11 +37,11 @@ func BuildReport(
 	report := &model.SecurityReport{
 		GeneratedAt:       now,
 		ReportID:          uuid.New().String(),
-		GuardDutyFindings:  gd,
-		InspectorFindings:  insp,
-		Investigations:     inv,
-		ActionsTaken:       actions,
-		Summary:            buildSummary(gd, insp, inv, actions),
+		GuardDutyFindings: gd,
+		InspectorFindings: insp,
+		Investigations:    inv,
+		ActionsTaken:      actions,
+		Summary:           buildSummary(gd, insp, inv, actions),
 	}
 	report.Markdown = renderMarkdown(report)
 	return report
@@ -178,13 +178,13 @@ func SaveReportToS3(ctx context.Context, cfg aws_sdk.Config, bucket string, repo
 // attribute; for large reports prefer S3 storage.
 func SaveReportToDynamoDB(ctx context.Context, cfg aws_sdk.Config, table string, report *model.SecurityReport) {
 	item := map[string]interface{}{
-		"report_id":           report.ReportID,
-		"generated_at":        report.GeneratedAt.Format(time.RFC3339),
-		"guardduty_count":     len(report.GuardDutyFindings),
-		"inspector_count":     len(report.InspectorFindings),
+		"report_id":            report.ReportID,
+		"generated_at":         report.GeneratedAt.Format(time.RFC3339),
+		"guardduty_count":      len(report.GuardDutyFindings),
+		"inspector_count":      len(report.InspectorFindings),
 		"investigations_count": len(report.Investigations),
-		"actions_taken":       report.ActionsTaken,
-		"summary":             report.Summary,
+		"actions_taken":        report.ActionsTaken,
+		"summary":              report.Summary,
 	}
 
 	av, err := attributevalue.MarshalMap(item)

@@ -18,11 +18,11 @@ import (
 )
 
 type Account struct {
-	cfg      aws_v2.Config   // reusable AWS SDK config for all service clients
-	identity CallerIdentity   // verified caller identity from STS
-	ready    bool             // true after successful Init()
-	mu       sync.RWMutex     // protects all fields
-	initErr  error            // captured error from the Init process
+	cfg      aws_v2.Config  // reusable AWS SDK config for all service clients
+	identity CallerIdentity // verified caller identity from STS
+	ready    bool           // true after successful Init()
+	mu       sync.RWMutex   // protects all fields
+	initErr  error          // captured error from the Init process
 }
 
 type CallerIdentity struct {

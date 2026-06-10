@@ -31,9 +31,9 @@ import (
 // record is evicted.  For production use, replace with a DynamoDB
 // table configured with a TTL attribute.
 type KPIStore struct {
-	mu        sync.RWMutex            // protects all fields
-	incidents []model.IncidentRecord  // rolling buffer, newest last
-	maxSize   int                     // maximum buffer capacity
+	mu        sync.RWMutex           // protects all fields
+	incidents []model.IncidentRecord // rolling buffer, newest last
+	maxSize   int                    // maximum buffer capacity
 }
 
 // NewKPIStore creates a bounded in-memory KPI store with the given
@@ -73,15 +73,15 @@ func (k *KPIStore) All() []model.IncidentRecord {
 // GET /security/kpi endpoint, aligned with the AWS Security
 // Maturity Model phase-based metrics (Detect → Recovery).
 type KPIReport struct {
-	GeneratedAt       string                   `json:"generated_at"`
-	TotalIncidents    int                      `json:"total_incidents"`
-	ActiveIncidents   int                      `json:"active_incidents"`
-	QuarantinedCount  int                      `json:"quarantined_count"`
-	MeanTimeToDetect  time.Duration            `json:"mean_time_to_detect"`
-	MeanTimeToContain time.Duration            `json:"mean_time_to_contain"`
-	MeanTimeToRecover time.Duration            `json:"mean_time_to_recover"`
-	SLABreaches       int                      `json:"sla_breaches"`
-	ByPhase           map[model.IRPhase]int    `json:"by_phase"`
+	GeneratedAt       string                `json:"generated_at"`
+	TotalIncidents    int                   `json:"total_incidents"`
+	ActiveIncidents   int                   `json:"active_incidents"`
+	QuarantinedCount  int                   `json:"quarantined_count"`
+	MeanTimeToDetect  time.Duration         `json:"mean_time_to_detect"`
+	MeanTimeToContain time.Duration         `json:"mean_time_to_contain"`
+	MeanTimeToRecover time.Duration         `json:"mean_time_to_recover"`
+	SLABreaches       int                   `json:"sla_breaches"`
+	ByPhase           map[model.IRPhase]int `json:"by_phase"`
 }
 
 // ComputeKPI calculates aggregated KPI metrics from all stored

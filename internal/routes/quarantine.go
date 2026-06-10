@@ -40,8 +40,8 @@ func QuarantineRollbackHandler(rollback QuarantineRollbackFunc) http.HandlerFunc
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]interface{}{
-			"status":    "quarantine removed",
-			"target_arn": arn,
+			"status":      "quarantine removed",
+			"target_arn":  arn,
 			"target_type": targetType,
 		})
 	}

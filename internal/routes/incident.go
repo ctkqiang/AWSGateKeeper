@@ -100,7 +100,9 @@ func IncidentOwnerHandler(updater OwnerUpdater) http.HandlerFunc {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "incident ID required"})
 			return
 		}
-		var body struct{ Owner string `json:"owner"` }
+		var body struct {
+			Owner string `json:"owner"`
+		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
 			return

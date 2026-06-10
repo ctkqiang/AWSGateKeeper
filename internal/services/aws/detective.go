@@ -10,10 +10,10 @@
 //
 // The trade-off is operational:
 //
-//	  Detective API    richer graph, automated entity resolution,
-//	                    requires Detective to be enabled
-//	  CloudTrail here  self-contained, no extra cost, slightly less
-//	                    correlation, works in any account
+//	Detective API    richer graph, automated entity resolution,
+//	                  requires Detective to be enabled
+//	CloudTrail here  self-contained, no extra cost, slightly less
+//	                  correlation, works in any account
 //
 // Required IAM permissions for the calling principal:
 //
@@ -155,13 +155,14 @@ func (c *DetectiveClient) InvestigateFinding(ctx context.Context, findingID, res
 //
 //  1. Source IP diversity — events from multiple distinct /16 blocks
 //     suggest credential compromise or a multi-hop access chain.
+//
 //  2. Sensitive API presence — calls like AssumeRole, CreateAccessKey,
 //     or AttachRolePolicy indicate privilege escalation attempts.
 //
-//	@param  timeline     chronological list of CloudTrail events
-//	@param  resourceARN  ARN of the resource under investigation (for
-//	                     error messages)
-//	@return              human-readable root cause description
+//     @param  timeline     chronological list of CloudTrail events
+//     @param  resourceARN  ARN of the resource under investigation (for
+//     error messages)
+//     @return              human-readable root cause description
 func buildRootCause(timeline []model.InvestigationEvent, resourceARN string) string {
 	if len(timeline) == 0 {
 		return fmt.Sprintf("inconclusive — no CloudTrail events found for %s in the lookback window", resourceARN)
@@ -224,13 +225,15 @@ func buildRootCause(timeline []model.InvestigationEvent, resourceARN string) str
 // The recommendation ladder, in order of priority:
 //
 //  1. CreateAccessKey events were seen  →  deactivate new keys + rotate
+//
 //  2. AssumeRole events were seen        →  audit trust policies + ExternalId
+//
 //  3. Otherwise                          →  generic tighten-IAM guidance
 //
-//	@param  timeline     chronological list of CloudTrail events
-//	@param  resourceARN  ARN of the resource under investigation (used
-//	                     in the generic fallback message)
-//	@return              human-readable remediation guidance
+//     @param  timeline     chronological list of CloudTrail events
+//     @param  resourceARN  ARN of the resource under investigation (used
+//     in the generic fallback message)
+//     @return              human-readable remediation guidance
 func buildRecommendation(timeline []model.InvestigationEvent, resourceARN string) string {
 	if len(timeline) == 0 {
 		return "no events to analyse; verify CloudTrail is enabled and the resource ARN is correct"
@@ -311,13 +314,14 @@ func firstTwoOctets(ip string) string {
 // Two sources are scanned for each event:
 //
 //  1. The flattened Resources slice returned by CloudTrail (cheap).
+//
 //  2. The raw CloudTrailEvent JSON, parsed for a "resources" array
 //     with "arn" entries (deeper, catches ARNs the SDK omitted).
 //
-//	@param  timeline     chronological list of CloudTrail events
-//	@param  primaryARN   the ARN under investigation; always included
-//	                       implicitly via the dedup set
-//	@return              deduplicated, ordered list of affected ARNs
+//     @param  timeline     chronological list of CloudTrail events
+//     @param  primaryARN   the ARN under investigation; always included
+//     implicitly via the dedup set
+//     @return              deduplicated, ordered list of affected ARNs
 func extractAffectedResources(timeline []model.InvestigationEvent, primaryARN string) []string {
 	seen := map[string]bool{primaryARN: true}
 	var result []string

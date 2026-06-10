@@ -547,7 +547,7 @@ func (c *GuardDutyClient) ListPublishingDestinations(ctx context.Context, detect
 // resource types protected by GuardDuty.
 func (c *GuardDutyClient) GetCoverageStatistics(ctx context.Context, detectorID string) (*model.CoverageStats, error) {
 	out, err := c.client.GetCoverageStatistics(ctx, &guardduty.GetCoverageStatisticsInput{
-		DetectorId: aws_sdk.String(detectorID),
+		DetectorId:     aws_sdk.String(detectorID),
 		FilterCriteria: &gdtypes.CoverageFilterCriteria{},
 	})
 	if err != nil {
