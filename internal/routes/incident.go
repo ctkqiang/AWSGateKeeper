@@ -1,6 +1,13 @@
 // Package routes (incident.go) provides HTTP handlers for the incident
-// management endpoints: IR phase tracking, ownership handoff, SLA status,
-// and KPI reporting — aligned with the AWS Security Maturity Model.
+// management endpoints required by the AWS Security Orchestration &
+// Ticketing maturity model:
+//
+//	GET    /security/kpi                    — KPI dashboard (MTTD/MTTC/MTTR)
+//	PATCH  /security/incident/{id}/phase    — advance IR phase
+//	PATCH  /security/incident/{id}/owner    — transfer incident ownership
+//
+// All handlers accept injected closures (KPIResponder, PhaseUpdater,
+// OwnerUpdater) to avoid import cycles with the services/security package.
 package routes
 
 import (
@@ -9,27 +16,43 @@ import (
 	"strings"
 )
 
-// KPIResponder is a function that returns a KPI report. Injected by main.go
-// to avoid import cycles with the security package.
+// KPIResponder is a function that returns a KPI report for the
+// security operations dashboard.  Injected by main.go to avoid an
+// import cycle with the security package.
 type KPIResponder func() interface{}
 
-// PhaseUpdater updates the IR phase of an incident. Injected by main.go.
-type PhaseUpdater func(incidentID string, phase, owner string) error
+// PhaseUpdater advances the IR phase of an incident and optionally
+// updates the owner.  Injected by main.go.
+//
+//	@param  incidentID  the incident to update
+//	@param  phase       the new IR phase (DETECT, ANALYSIS, CONTAINMENT, ...)
+//	@param  owner       optional new owner; empty = no change
+//	@return             non-nil if the update fails
+type PhaseUpdater func(incidentID, phase, owner string) error
 
-// OwnerUpdater transfers incident ownership. Injected by main.go.
+// OwnerUpdater transfers incident ownership to a new responder.
+// Injected by main.go.
+//
+//	@param  incidentID  the incident to update
+//	@param  newOwner    the new owner identifier
+//	@return             non-nil if the update fails
 type OwnerUpdater func(incidentID, newOwner string) error
 
-// KPIHandler returns an http.HandlerFunc that serves the KPI dashboard.
+// KPIHandler returns an http.HandlerFunc that serves the aggregated
+// KPI dashboard (MTTD, MTTC, MTTR, SLA breaches, per-phase counts).
+//
+//	GET /security/kpi
 func KPIHandler(kpi KPIResponder) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, kpi())
 	}
 }
 
-// IncidentPhaseHandler returns an http.HandlerFunc for updating the IR
-// phase of an incident.
+// IncidentPhaseHandler returns an http.HandlerFunc for advancing the
+// IR phase of a tracked incident.
 //
 //	PATCH /security/incident/{id}/phase
+//	Body: {"phase": "CONTAINMENT", "owner": "analyst@example.com"}
 func IncidentPhaseHandler(updater PhaseUpdater) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPatch {
@@ -53,14 +76,19 @@ func IncidentPhaseHandler(updater PhaseUpdater) http.HandlerFunc {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]string{"status": "phase updated", "incident_id": id, "phase": body.Phase})
+		writeJSON(w, http.StatusOK, map[string]string{
+			"status":      "phase updated",
+			"incident_id": id,
+			"phase":       body.Phase,
+		})
 	}
 }
 
 // IncidentOwnerHandler returns an http.HandlerFunc for transferring
-// incident ownership.
+// incident ownership from one responder to another.
 //
 //	PATCH /security/incident/{id}/owner
+//	Body: {"owner": "new-analyst@example.com"}
 func IncidentOwnerHandler(updater OwnerUpdater) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPatch {
@@ -81,10 +109,20 @@ func IncidentOwnerHandler(updater OwnerUpdater) http.HandlerFunc {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]string{"status": "owner updated", "incident_id": id, "owner": body.Owner})
+		writeJSON(w, http.StatusOK, map[string]string{
+			"status":      "owner updated",
+			"incident_id": id,
+			"owner":       body.Owner,
+		})
 	}
 }
 
+// extractIncidentID parses an incident ID from a URL path of the form
+// /security/incident/{id}/suffix, returning the ID segment.
+//
+//	@param  path    the full request URL path
+//	@param  suffix  the trailing path segment to strip (e.g. "/phase")
+//	@return         the extracted incident ID, or "" on failure
 func extractIncidentID(path, suffix string) string {
 	prefix := "/security/incident/"
 	trimmed := strings.TrimPrefix(path, prefix)
