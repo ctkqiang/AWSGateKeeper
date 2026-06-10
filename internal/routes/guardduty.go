@@ -8,25 +8,27 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+
+	"aws_gatekeeper/internal/model"
 )
 
 // GuardDutyClient is the minimal interface that GuardDuty routes need.
-// The concrete implementation is injected from outside to avoid import
-// cycles between routes and services/aws.
+// The concrete implementation (services/aws.GuardDutyClient) satisfies
+// this interface directly — no adapter required.
 type GuardDutyClient interface {
-	GetFindingsStatistics(ctx context.Context, detectorID string) (interface{}, error)
+	GetFindingsStatistics(ctx context.Context, detectorID string) (*model.FindingStatistics, error)
 	ArchiveFinding(ctx context.Context, detectorID, findingID string) error
 	UnarchiveFinding(ctx context.Context, detectorID, findingID string) error
-	ListThreatIntelSets(ctx context.Context, detectorID string) (interface{}, error)
-	ListPublishingDestinations(ctx context.Context, detectorID string) (interface{}, error)
-	GetCoverageStatistics(ctx context.Context, detectorID string) (interface{}, error)
-	ListMembers(ctx context.Context, detectorID string) (interface{}, error)
-	GetOrganizationStatistics(ctx context.Context) (interface{}, error)
+	ListThreatIntelSets(ctx context.Context, detectorID string) ([]model.ThreatIntelSet, error)
+	ListPublishingDestinations(ctx context.Context, detectorID string) ([]model.PublishingDestination, error)
+	GetCoverageStatistics(ctx context.Context, detectorID string) (*model.CoverageStats, error)
+	ListMembers(ctx context.Context, detectorID string) ([]model.MemberAccount, error)
+	GetOrganizationStatistics(ctx context.Context) (*model.OrganizationStats, error)
 	CreateSampleFindings(ctx context.Context, detectorID string, findingTypes []string) error
 }
 
-// GDFactory creates a GuardDuty client from the given config. Injected
-// by main.go to avoid import cycles.
+// GDFactory creates a GuardDuty client from a detector ID. Injected by
+// main.go to avoid import cycles.
 type GDFactory func(detectorID string) GuardDutyClient
 
 func GuardDutyStatsHandler(factory GDFactory) http.HandlerFunc {
