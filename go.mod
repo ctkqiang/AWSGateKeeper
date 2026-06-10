@@ -17,6 +17,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/iam v1.54.3
 	github.com/aws/aws-sdk-go-v2/service/inspector2 v1.28.0
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.103.2
+	github.com/aws/aws-sdk-go-v2/service/securityhub v1.71.7
 	github.com/aws/aws-sdk-go-v2/service/sts v1.43.2
 	github.com/google/uuid v1.6.0
 	golang.org/x/sync v0.11.0
