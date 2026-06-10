@@ -11,6 +11,7 @@ import (
 )
 
 // Audit holds a pre-configured Cognito client for user-pool inspection.
+type Audit struct {
 	CognitoClient *cognitoidentityprovider.Client
 }
 
