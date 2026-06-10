@@ -18,6 +18,8 @@ github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.29 h1:RdwIf/CuUsvJX3RgJa
 github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.29/go.mod h1:71wt8W2EgswdZy9Mf9KNnzxZ3TiZlv4caKghPktDOkA=
 github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.30 h1:VTGy885W5DKBxWRUJbym9hytNaYzsyaPkCHGRRMAOhU=
 github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.30/go.mod h1:AS0HycUvJRFvTt613AYDOgO2jzw+00cVSMny8XB3yMY=
+github.com/aws/aws-sdk-go-v2/service/accessanalyzer v1.49.5 h1:YRmgSZDK5hzQGr3WD/tUVFCwVsnELDbTui7yhEgzy7g=
+github.com/aws/aws-sdk-go-v2/service/accessanalyzer v1.49.5/go.mod h1:4v0AkcAcWguJx3gOcZTvunFMbVeJ1e0jiUZPkaDPbhI=
 github.com/aws/aws-sdk-go-v2/service/cloudtrail v1.56.3 h1:iqqLURTPGkD3xbdRAM8ZW9+PhA+2J2t1ZtomGaJCaU8=
 github.com/aws/aws-sdk-go-v2/service/cloudtrail v1.56.3/go.mod h1:6IFZ3ceNZcMB7NZsYpp7HSKJp4nceLFvnY0/XyVPt24=
 github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.59.0 h1:JOrwHweL6IzRjbDxdjup2YI2QjWa8/h0PGexR8MZpKw=
@@ -46,6 +48,10 @@ github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.28 h1:axj4mEDl
 github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.28/go.mod h1:3Aaz69M0jqfSHLKqxgolgUBFT4hpwSNc7DzC95orEi8=
 github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.28 h1:li8rTZAAb22g4UsxbjwMdaNVWbgVcDzPqI7nDTI+mF4=
 github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.28/go.mod h1:/brXioSGIMEdcBFoubpSdmighSVp6poP+mma/wB7iHA=
+github.com/aws/aws-sdk-go-v2/service/macie2 v1.52.3 h1:EdX6gif3V9IakGFi2sveCRrA7933ho2mDDCmFgwLBAA=
+github.com/aws/aws-sdk-go-v2/service/macie2 v1.52.3/go.mod h1:0pANWqStki1+mgfggK45P1AEE5Uwr/IL6pLmpqRU+yk=
+github.com/aws/aws-sdk-go-v2/service/route53resolver v1.45.4 h1:zldDJEFllj9+8DOk1NKVPmLuuQFe0Pg/1C62OUwozAA=
+github.com/aws/aws-sdk-go-v2/service/route53resolver v1.45.4/go.mod h1:1oAVFtzaMbAf+LfMXHhUW30lKLnBWwwNbeBeUXudjCk=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.103.2 h1:b4ikkRk22T4xYkEgaWc3Voe+3xbt5YbbFhNehOWyUiY=
 github.com/aws/aws-sdk-go-v2/service/s3 v1.103.2/go.mod h1:Gp7eHZ0NZ8ZK5RXpoIUp/C8OeAmJqpCgdwEK1D/QOek=
 github.com/aws/aws-sdk-go-v2/service/securityhub v1.71.7 h1:7H0Y7DA+SLT9U0ssRSIPo7+dMY5p6kXMU63ncCx8ayI=

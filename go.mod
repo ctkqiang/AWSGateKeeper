@@ -8,6 +8,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.32.23
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.22
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.20.46
+	github.com/aws/aws-sdk-go-v2/service/accessanalyzer v1.49.5
 	github.com/aws/aws-sdk-go-v2/service/cloudtrail v1.56.3
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.59.0
 	github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider v1.61.4
@@ -16,6 +17,8 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/guardduty v1.79.3
 	github.com/aws/aws-sdk-go-v2/service/iam v1.54.3
 	github.com/aws/aws-sdk-go-v2/service/inspector2 v1.28.0
+	github.com/aws/aws-sdk-go-v2/service/macie2 v1.52.3
+	github.com/aws/aws-sdk-go-v2/service/route53resolver v1.45.4
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.103.2
 	github.com/aws/aws-sdk-go-v2/service/securityhub v1.71.7
 	github.com/aws/aws-sdk-go-v2/service/sts v1.43.2
