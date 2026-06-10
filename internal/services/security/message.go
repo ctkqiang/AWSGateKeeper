@@ -1,3 +1,5 @@
+// Package security (message.go) provides the MessagingConfig builder
+// and the ExecuteScanAndDeliver entry point used by HTTP routes.
 package security
 
 import (

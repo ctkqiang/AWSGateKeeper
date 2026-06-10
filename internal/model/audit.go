@@ -1,3 +1,5 @@
+// Package model (audit.go) defines the audit event types, the
+// AuditLogger, and the Audit struct for the governance pipeline.
 package model
 
 import (
@@ -8,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 )
 
-type Audit struct {
+// Audit holds a pre-configured Cognito client for user-pool inspection.
 	CognitoClient *cognitoidentityprovider.Client
 }
 

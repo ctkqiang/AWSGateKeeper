@@ -1,3 +1,6 @@
+// Package security (handler.go) implements the ScanOrchestrator, which
+// coordinates a full security scan cycle via concurrent GuardDuty and
+// Inspector scans, sequential Detective investigations, and report delivery.
 package security
 
 import (

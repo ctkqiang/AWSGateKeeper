@@ -1,3 +1,5 @@
+// Package aws (policies.go) defines the ActionGroup and Action type
+// system for policy-as-code IAM permission generation.
 package aws
 
 type (

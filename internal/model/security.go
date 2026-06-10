@@ -1,3 +1,5 @@
+// Package model (security.go) defines the security subsystem domain
+// types: findings, investigations, reports, and GuardDuty resource models.
 package model
 
 import "time"

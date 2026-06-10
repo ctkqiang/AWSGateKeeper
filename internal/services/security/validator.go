@@ -1,3 +1,5 @@
+// Package security (validator.go) provides input validation functions
+// for ARN format, detector IDs, finding IDs, and IAM policy documents.
 package security
 
 import (

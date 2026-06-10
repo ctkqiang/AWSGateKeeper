@@ -1,3 +1,5 @@
+// Package aws (eventbridge_publisher.go) publishes structured security
+// events to a custom EventBridge bus for downstream SIEM and automation.
 package aws
 
 import (

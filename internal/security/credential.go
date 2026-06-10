@@ -1,3 +1,5 @@
+// Package security (credential.go) reads and validates AWS credentials
+// from environment variables populated by the preference package.
 package security
 
 import (

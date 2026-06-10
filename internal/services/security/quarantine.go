@@ -1,3 +1,6 @@
+// Package security (quarantine.go) implements the QuarantineEngine,
+// which performs non-destructive zero-privilege isolation of compromised
+// IAM identities via explicit Deny-* inline policies.
 package security
 
 import (

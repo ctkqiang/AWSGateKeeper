@@ -1,3 +1,6 @@
+// Package aws (metrics.go) publishes custom CloudWatch metrics under the
+// AWSGateKeeper namespace for scan duration, finding counts, quarantine
+// events, and error rates.
 package aws
 
 import (

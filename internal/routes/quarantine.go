@@ -1,3 +1,5 @@
+// Package routes (quarantine.go) provides HTTP handlers for the
+// IAM quarantine subsystem: force-quarantine and rollback endpoints.
 package routes
 
 import (

@@ -1,3 +1,6 @@
+// Package security (report.go) implements the BuildReport function,
+// which aggregates findings into a Markdown report and delivers it via
+// S3, DynamoDB, and webhook POST.
 package security
 
 import (

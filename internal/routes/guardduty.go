@@ -1,3 +1,6 @@
+// Package routes (guardduty.go) provides HTTP handlers for the
+// GuardDuty management endpoints (statistics, archive, threat intel,
+// publishing destinations, coverage, members, and organisation stats).
 package routes
 
 import (

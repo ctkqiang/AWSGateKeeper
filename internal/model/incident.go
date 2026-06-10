@@ -1,3 +1,5 @@
+// Package model (incident.go) defines types for the incident response
+// pipeline: violation records, quarantine records, and incident reports.
 package model
 
 import "time"

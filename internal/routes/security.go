@@ -1,3 +1,6 @@
+// Package routes (security.go) provides HTTP handlers for the security
+// scan and health-check endpoints, accepting injected closures to avoid
+// import cycles with the services/security package.
 package routes
 
 import (

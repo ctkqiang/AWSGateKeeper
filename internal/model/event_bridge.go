@@ -1,8 +1,10 @@
+// Package model (event_bridge.go) defines the EventBridge event envelope.
 package model
 
 import "time"
 
-type EventBridgeEvent struct {
+// EventBridgeEvent is the structured event payload published to a
+// custom EventBridge bus for downstream consumption.
 	Version    string                 `json:"version"`
 	ID         string                 `json:"id"`
 	DetailType string                 `json:"detail-type"`

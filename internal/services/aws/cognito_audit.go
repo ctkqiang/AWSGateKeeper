@@ -1,3 +1,6 @@
+// Package aws (cognito_audit.go) implements the COGNITO_PRIVILEGED_EXTERNAL_USERS
+// audit rule by inspecting Cognito user pool groups for external users in
+// privileged roles.
 package aws
 
 import (
@@ -7,6 +10,7 @@ import (
 
 	aws_sdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
+	cognitotypes "github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider/types"
 )
 
 // CognitoAuditor implements the COGNITO_PRIVILEGED_EXTERNAL_USERS
@@ -133,7 +137,7 @@ func matchesAnyPattern(name string, patterns []string) bool {
 	return false
 }
 
-func userAttribute(attrs []cognitoidentityprovider.AttributeType, name string) string {
+func userAttribute(attrs []cognitotypes.AttributeType, name string) string {
 	for _, a := range attrs {
 		if aws_sdk.ToString(a.Name) == name {
 			return aws_sdk.ToString(a.Value)

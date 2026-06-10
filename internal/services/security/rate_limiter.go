@@ -1,3 +1,5 @@
+// Package security (rate_limiter.go) implements a token-bucket rate
+// limiter to prevent GuardDuty API throttling during concurrent scans.
 package security
 
 import (

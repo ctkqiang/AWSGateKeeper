@@ -1,3 +1,5 @@
+// Package model (user.go) defines user identity types, privilege
+// levels, and the User domain entity.
 package model
 
 type (

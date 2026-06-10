@@ -1,3 +1,6 @@
+// Package aws (authorisation.go) provides the STS-verified authentication
+// singleton. Initialize() must be called once at startup; GetAccount()
+// returns the cached config for all downstream clients.
 package aws
 
 import (
