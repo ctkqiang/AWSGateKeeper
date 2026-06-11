@@ -131,6 +131,7 @@ func (a *Account) Config() aws_v2.Config {
 	return a.cfg
 }
 
-func AWSAuthorisation() {
-
-}
+// AWSAuthorisation is reserved for future OAuth2 / Cognito authorisation
+// middleware.  Currently a no-op — all endpoints are unauthenticated and
+// rely on IAM role permissions at the SDK level.
+func AWSAuthorisation() {}

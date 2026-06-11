@@ -22,6 +22,18 @@
 | `PATCH` | `/security/incident/{id}/phase` | IAM (SDK) | 推进 IR 阶段（Detect→Recovery） |
 | `PATCH` | `/security/incident/{id}/owner` | IAM (SDK) | 转移事件所有权 |
 
+### 内部服务函数
+
+可从扫描编排器和事件处理器调用的安全分析函数。
+
+| 函数 | 包 | 描述 |
+|----------|---------|-------------|
+| `CorrelateAAWithGuardDuty()` | `aws` | 将 Access Analyzer 公开访问发现与 GuardDuty 威胁评分交叉关联 |
+| `CorrelateMacieWithGuardDuty()` | `aws` | 将 Macie 敏感数据发现与 GuardDuty 数据泄露异常交叉关联 |
+| `ExtractDNSThreats()` | `aws` | 从 GuardDuty DNS/CryptoCurrency 发现中提取恶意域名 |
+| `AnalyzeVPCFlowPatterns()` | `aws` | 将 GuardDuty VPC 发现聚合为端口/协议/来源 IP 模式报告 |
+| `CorrelateWithGuardDuty()` | `aws` | 对任意发现类型与 GuardDuty 数据进行通用威胁评分增强 |
+
 ## GET /
 
 返回简单问候。
@@ -115,4 +127,30 @@
   ],
   "lookback_hours": 24
 }
+```
+
+## AWS 客户端构造函数
+
+可在安全管道中编程使用的 SDK 封装器。
+
+| 构造函数 | 包 | 所需 IAM 权限 |
+|-------------|---------|------------------------|
+| `NewGuardDutyClient(cfg, region)` | `aws` | `guardduty:ListFindings`, `guardduty:GetFindings`, `iam:UpdateAccessKey` |
+| `NewInspectorClient(cfg)` | `aws` | `inspector2:ListFindings` |
+| `NewDetectiveClient(cfg)` | `aws` | `cloudtrail:LookupEvents` |
+| `NewSecurityHubClient(cfg)` | `aws` | `securityhub:GetFindings`, `securityhub:BatchUpdateFindings` |
+| `NewAccessAnalyzerClient(cfg)` | `aws` | `access-analyzer:ListFindings` |
+| `NewMacieClient(cfg)` | `aws` | `macie2:ListFindings`, `macie2:GetFindings` |
+| `NewDNSFirewallClient(cfg)` | `aws` | `route53resolver:UpdateFirewallDomains` |
+| `NewMetricsClient(cfg)` | `aws` | `cloudwatch:PutMetricData` |
+| `NewEventPublisher(cfg, busName)` | `aws` | `events:PutEvents` |
+| `NewCognitoAuditor(cfg)` | `aws` | `cognito-idp:ListGroups`, `cognito-idp:ListUsersInGroup` |
+| `NewS3AuditLogger()` | `aws` | `s3:PutObject` |
+| `NewTrailClient(cfg)` | `aws` | `cloudtrail:LookupEvents` |
+| `NewQuarantineEngine(cfg)` | `security` | `iam:PutUserPolicy`, `iam:PutRolePolicy`, `iam:UpdateAccessKey` |
+| `NewScanOrchestrator(cfg)` | `security` | GuardDuty + Inspector + Detective 聚合 |
+| `NewIncidentHandler(cfg)` | `security` | 审计 + 隔离 + webhook 聚合 |
+| `NewKPIStore(maxSize)` | `security` | (内存，无需 IAM) |
+| `NewSLATracker(escalateFn, sla)` | `security` | (内存，无需 IAM) |
+
 ```

@@ -9,6 +9,7 @@ import (
 	"aws_gatekeeper/internal/utilities"
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	aws_sdk "github.com/aws/aws-sdk-go-v2/aws"
@@ -24,14 +25,21 @@ import (
 // the HTTP layer needs to interact with — all SDK plumbing is hidden
 // behind RunFullScan.
 type ScanOrchestrator struct {
-	cfg             aws_sdk.Config           // shared AWS SDK config
-	region          string                   // AWS region for SDK clients
-	detectorID      string                   // GuardDuty detector ID
-	lookbackHours   int                      // lookback window in hours for all scans
-	messagingURL    string                   // optional destination URL for the report
-	guardDutyClient *aws_svc.GuardDutyClient // GuardDuty finding fetcher
-	inspectorClient *aws_svc.InspectorClient // Inspector CVE fetcher
-	detectiveClient *aws_svc.DetectiveClient // Detective / CloudTrail investigator
+	cfg                aws_sdk.Config              // shared AWS SDK config
+	region             string                      // AWS region for SDK clients
+	detectorID         string                      // GuardDuty detector ID
+	lookbackHours      int                         // lookback window in hours for all scans
+	messagingURL       string                      // optional destination URL for the report
+	guardDutyClient    *aws_svc.GuardDutyClient    // GuardDuty finding fetcher
+	inspectorClient    *aws_svc.InspectorClient    // Inspector CVE fetcher
+	detectiveClient    *aws_svc.DetectiveClient    // Detective / CloudTrail investigator
+	// Lazy-init optional clients added post-orchestrator construction.
+	cognitoAuditor     *aws_svc.CognitoAuditor
+	accessAnalyzer     *aws_svc.AccessAnalyzerClient
+	macieClient        *aws_svc.MacieClient
+	eventPublisher     *aws_svc.EventPublisher
+	securityHubClient  *aws_svc.SecurityHubClient
+	dnsFirewallClient  *aws_svc.DNSFirewallClient
 }
 
 // OrchestratorConfig holds the parameters required to construct a
@@ -169,6 +177,10 @@ func (o *ScanOrchestrator) RunFullScan(ctx context.Context) (*model.SecurityRepo
 
 	// Build the report synchronously; delivery is best-effort in a
 	// goroutine so the caller can return the report immediately.
+
+		// Post-scan cross-service enrichment (async, non-blocking).
+		o.runPostScanEnrichment(ctx, gdFindings)
+
 	report := BuildReport(gdFindings, inspFindings, investigations, actionsTaken)
 
 	o.deliverReport(ctx, report)
@@ -246,4 +258,67 @@ func countCriticalFindings(report *model.SecurityReport) int {
 		}
 	}
 	return n
+}
+
+// runPostScanEnrichment executes cross-service correlation after the
+// primary GuardDuty + Inspector scans complete.  Each analysis runs
+// in its own goroutine and failures are logged but non-fatal.
+func (o *ScanOrchestrator) runPostScanEnrichment(ctx context.Context, gdFindings []model.GuardDutyFinding) {
+	if len(gdFindings) == 0 {
+		return
+	}
+	// Cognito external user audit.
+	if o.cognitoAuditor == nil {
+		o.cognitoAuditor = aws_svc.NewCognitoAuditor(o.cfg)
+	}
+	go func() {
+		violations, err := o.cognitoAuditor.AuditExternalUsers(ctx, "", []string{"Admin", "SuperUser", "Operator"}, []string{})
+		if err != nil {
+			utilities.Error("security: cognito audit: %v", err)
+			return
+		}
+		if len(violations) > 0 {
+			utilities.LogProgress("security", "cognito", fmt.Sprintf("external users in privileged groups: %d", len(violations)))
+		}
+	}()
+
+	// Macie sensitive-data correlation.
+	if o.macieClient == nil {
+		o.macieClient = aws_svc.NewMacieClient(o.cfg)
+	}
+	go func() {
+		exposures, err := o.macieClient.ListSensitiveDataFindings(ctx)
+		if err != nil {
+			utilities.Error("security: macie: %v", err)
+			return
+		}
+		correlated := aws_svc.CorrelateMacieWithGuardDuty(exposures, gdFindings)
+		for _, e := range correlated {
+			if e.Severity == "CRITICAL" {
+				utilities.LogProgress("security", "macie", fmt.Sprintf("CRITICAL exposure: bucket=%s type=%s", e.S3Bucket, e.SensitiveDataType))
+			}
+		}
+	}()
+
+	// DNS threat extraction from GuardDuty findings.
+	go func() {
+		threats := aws_svc.ExtractDNSThreats(gdFindings)
+		if len(threats) > 0 {
+			utilities.LogProgress("security", "dns-threats", fmt.Sprintf("extracted %d malicious domains", len(threats)))
+		}
+	}()
+
+	// VPC Flow Log pattern analysis.
+	go func() {
+		pattern := aws_svc.AnalyzeVPCFlowPatterns(gdFindings)
+		if pattern.FindingCount > 0 {
+			utilities.LogProgress("security", "vpc-flow", fmt.Sprintf("%d flow findings, top port: %d", pattern.FindingCount, 0))
+		}
+	}()
+
+	// EventBridge: publish scan-completed event if publisher is configured.
+	if o.eventPublisher == nil {
+		o.eventPublisher = aws_svc.NewEventPublisher(o.cfg, os.Getenv("EVENTBRIDGE_BUS_NAME"))
+	}
+	go o.eventPublisher.PublishScanCompletedEvent(ctx, "", len(gdFindings), 0, 0, 0)
 }

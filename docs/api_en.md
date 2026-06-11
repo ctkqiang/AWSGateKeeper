@@ -22,6 +22,23 @@
 | `PATCH` | `/security/incident/{id}/phase` | IAM (SDK) | Advance IR phase (Detect→Recovery) |
 | `PATCH` | `/security/incident/{id}/owner` | IAM (SDK) | Transfer incident ownership |
 
+### Network Defense Endpoints
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+
+### Internal Service Functions
+
+Security analysis functions callable from the scan orchestrator and incident handler.
+
+| Function | Package | Description |
+|----------|---------|-------------|
+| `CorrelateAAWithGuardDuty()` | `aws` | Cross-reference Access Analyzer public-access findings with GuardDuty threat scores |
+| `CorrelateMacieWithGuardDuty()` | `aws` | Cross-reference Macie sensitive-data findings with GuardDuty exfiltration anomalies |
+| `ExtractDNSThreats()` | `aws` | Extract malicious domains from GuardDuty DNS/CryptoCurrency findings |
+| `AnalyzeVPCFlowPatterns()` | `aws` | Aggregate GuardDuty VPC findings into port/protocol/source-IP pattern report |
+| `CorrelateWithGuardDuty()` | `aws` | Generic threat-score enrichment for any finding type against GuardDuty data |
+
 ## GET /
 
 Returns a simple greeting.
@@ -115,4 +132,30 @@ Returns the operational status of the security subsystem.
   ],
   "lookback_hours": 24
 }
+```
+
+## AWS Client Constructors
+
+Available SDK wrappers for programmatic use within the security pipeline.
+
+| Constructor | Package | Required IAM Permission |
+|-------------|---------|------------------------|
+| `NewGuardDutyClient(cfg, region)` | `aws` | `guardduty:ListFindings`, `guardduty:GetFindings`, `iam:UpdateAccessKey` |
+| `NewInspectorClient(cfg)` | `aws` | `inspector2:ListFindings` |
+| `NewDetectiveClient(cfg)` | `aws` | `cloudtrail:LookupEvents` |
+| `NewSecurityHubClient(cfg)` | `aws` | `securityhub:GetFindings`, `securityhub:BatchUpdateFindings` |
+| `NewAccessAnalyzerClient(cfg)` | `aws` | `access-analyzer:ListFindings` |
+| `NewMacieClient(cfg)` | `aws` | `macie2:ListFindings`, `macie2:GetFindings` |
+| `NewDNSFirewallClient(cfg)` | `aws` | `route53resolver:UpdateFirewallDomains` |
+| `NewMetricsClient(cfg)` | `aws` | `cloudwatch:PutMetricData` |
+| `NewEventPublisher(cfg, busName)` | `aws` | `events:PutEvents` |
+| `NewCognitoAuditor(cfg)` | `aws` | `cognito-idp:ListGroups`, `cognito-idp:ListUsersInGroup` |
+| `NewS3AuditLogger()` | `aws` | `s3:PutObject` |
+| `NewTrailClient(cfg)` | `aws` | `cloudtrail:LookupEvents` |
+| `NewQuarantineEngine(cfg)` | `security` | `iam:PutUserPolicy`, `iam:PutRolePolicy`, `iam:UpdateAccessKey` |
+| `NewScanOrchestrator(cfg)` | `security` | Aggregate of GuardDuty + Inspector + Detective |
+| `NewIncidentHandler(cfg)` | `security` | Aggregate of audit + quarantine + webhook |
+| `NewKPIStore(maxSize)` | `security` | (in-memory, no IAM) |
+| `NewSLATracker(escalateFn, sla)` | `security` | (in-memory, no IAM) |
+
 ```
