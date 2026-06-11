@@ -59,20 +59,20 @@ AWSGateKeeper is a **production-grade, open-source AWS security automation platf
 
 1. **Unifies** GuardDuty, Inspector, Detective, IAM, and CloudTrail into a single event-driven pipeline
 2. **Automates** the entire incident response lifecycle: detect → audit → correlate → quarantine → report
-3. **Quarantines** compromised identities with explicit Deny-* policies — non-destructive, forensically sound, and instantly reversible
+3. **Quarantines** compromised identities with explicit Deny-\* policies — non-destructive, forensically sound, and instantly reversible
 4. **Scans** every IAM policy mutation in real-time against organisational security baselines
 5. **Delivers** actionable Markdown reports to Slack, DingTalk, Feishu, Teams, Splunk, or Datadog
 6. **Runs** on AWS Lambda (serverless, zero-maintenance) or locally as a standalone HTTP server
 
 ### Who Is This For
 
-| Role | Use Case |
-|------|----------|
-| **Cloud Security Engineers** | Automate SOC 2, PCI-DSS, HIPAA IAM compliance audits |
-| **DevSecOps Teams** | Integrate security scanning into CI/CD pipelines |
-| **AWS Administrators** | Enforce least-privilege IAM at scale across multi-account organisations |
-| **Incident Responders** | One-click quarantine of compromised credentials during active breaches |
-| **Compliance Officers** | Generate audit-ready Markdown reports with full CloudTrail traceability |
+| Role                         | Use Case                                                                |
+| ---------------------------- | ----------------------------------------------------------------------- |
+| **Cloud Security Engineers** | Automate SOC 2, PCI-DSS, HIPAA IAM compliance audits                    |
+| **DevSecOps Teams**          | Integrate security scanning into CI/CD pipelines                        |
+| **AWS Administrators**       | Enforce least-privilege IAM at scale across multi-account organisations |
+| **Incident Responders**      | One-click quarantine of compromised credentials during active breaches  |
+| **Compliance Officers**      | Generate audit-ready Markdown reports with full CloudTrail traceability |
 
 ---
 
@@ -228,10 +228,10 @@ AWSGateKeeper/
 
 ## Audit Rules
 
-| Rule ID | Risk | Description |
-|---------|------|-------------|
-| `IAM_VENDOR_EXTERNALID_REQUIRED` | **CRITICAL** | Cross-account IAM roles must enforce a unique `ExternalId` to prevent the confused-deputy problem |
-| `COGNITO_PRIVILEGED_EXTERNAL_USERS` | **HIGH** | External users (non-corporate email domains) must not belong to privileged Cognito groups |
+| Rule ID                             | Risk         | Description                                                                                       |
+| ----------------------------------- | ------------ | ------------------------------------------------------------------------------------------------- |
+| `IAM_VENDOR_EXTERNALID_REQUIRED`    | **CRITICAL** | Cross-account IAM roles must enforce a unique `ExternalId` to prevent the confused-deputy problem |
+| `COGNITO_PRIVILEGED_EXTERNAL_USERS` | **HIGH**     | External users (non-corporate email domains) must not belong to privileged Cognito groups         |
 
 The audit engine evaluates both rules daily. CRITICAL findings trigger immediate alerts via CloudWatch → SIEM.
 
@@ -241,16 +241,16 @@ The audit engine evaluates both rules daily. CRITICAL findings trigger immediate
 
 ### IAM Role Governance
 
-| Privilege | Access | Policy Type |
-|-----------|--------|-------------|
-| Root | Full administrator | `AdministratorAccess` (AWS managed) |
-| SOCAnalyst | Logs, CloudWatch, CloudTrail, GuardDuty | Inline (least-privilege) |
-| FrontEndDeveloper | S3, CloudFront, Lambda | Inline (least-privilege) |
-| BackEndDeveloper | DynamoDB, API Gateway, Lambda, SQS | Inline (least-privilege) |
-| DeploymentOperation | CodeDeploy, CodePipeline, CloudFormation, ECS, ECR | Inline (least-privilege) |
-| ThirdPartyFrontEnd | S3, CloudFront (read-only intended) | Inline (least-privilege) |
-| ThirdPartyBackEnd | DynamoDB, Lambda (read-only intended) | Inline (least-privilege) |
-| BillingOnly | Billing, Cost Explorer | Inline (least-privilege) |
+| Privilege           | Access                                             | Policy Type                         |
+| ------------------- | -------------------------------------------------- | ----------------------------------- |
+| Root                | Full administrator                                 | `AdministratorAccess` (AWS managed) |
+| SOCAnalyst          | Logs, CloudWatch, CloudTrail, GuardDuty            | Inline (least-privilege)            |
+| FrontEndDeveloper   | S3, CloudFront, Lambda                             | Inline (least-privilege)            |
+| BackEndDeveloper    | DynamoDB, API Gateway, Lambda, SQS                 | Inline (least-privilege)            |
+| DeploymentOperation | CodeDeploy, CodePipeline, CloudFormation, ECS, ECR | Inline (least-privilege)            |
+| ThirdPartyFrontEnd  | S3, CloudFront (read-only intended)                | Inline (least-privilege)            |
+| ThirdPartyBackEnd   | DynamoDB, Lambda (read-only intended)              | Inline (least-privilege)            |
+| BillingOnly         | Billing, Cost Explorer                             | Inline (least-privilege)            |
 
 - Idempotent creation: existing roles have their trust policy updated in place
 - Trust policies restrict `sts:AssumeRole` to same-account principals
@@ -286,14 +286,14 @@ Policy JSON → AuditWildcardPolicy()
 
 ## Design Patterns
 
-| Pattern | Location | Purpose |
-|---------|----------|---------|
-| **Singleton Auth** | `authorisation.go` | STS-verified config shared across all AWS clients |
-| **Policy-as-Code** | `policies.go`, `roles.go` | 20 ActionGroups → typed IAM permission generation |
-| **Idempotent Create** | `roles.go:ensureRole()` | Create or update trust policy on existing roles |
-| **Chain of Responsibility** | `monitor.go` | Detect wildcard → classify severity → raise alert |
-| **Fire-and-Forget** | `forwarder.go` | Background goroutine SIEM delivery |
-| **Config Hierarchy** | `environment.go` | Explicit env vars > YAML file |
+| Pattern                     | Location                  | Purpose                                           |
+| --------------------------- | ------------------------- | ------------------------------------------------- |
+| **Singleton Auth**          | `authorisation.go`        | STS-verified config shared across all AWS clients |
+| **Policy-as-Code**          | `policies.go`, `roles.go` | 20 ActionGroups → typed IAM permission generation |
+| **Idempotent Create**       | `roles.go:ensureRole()`   | Create or update trust policy on existing roles   |
+| **Chain of Responsibility** | `monitor.go`              | Detect wildcard → classify severity → raise alert |
+| **Fire-and-Forget**         | `forwarder.go`            | Background goroutine SIEM delivery                |
+| **Config Hierarchy**        | `environment.go`          | Explicit env vars > YAML file                     |
 
 ---
 
@@ -315,9 +315,9 @@ cp aws-config.example.yaml aws-config.yaml
 ```yaml
 # aws-config.yaml
 aws:
-  access_key_id:     YOUR_ACCESS_KEY_ID
+  access_key_id: YOUR_ACCESS_KEY_ID
   secret_access_key: YOUR_SECRET_ACCESS_KEY
-  region:            ap-east-1
+  region: ap-east-1
 ```
 
 ### Local Development
@@ -354,13 +354,13 @@ docker build --platform linux/arm64 -t awsgatekeeper .
 
 Lambda configuration:
 
-| Setting | Value |
-|---------|-------|
-| Runtime | `provided.al2023` |
-| Handler | `bootstrap` |
-| Memory | 256 MB |
-| Timeout | 30 seconds |
-| Architecture | `arm64` |
+| Setting      | Value             |
+| ------------ | ----------------- |
+| Runtime      | `provided.al2023` |
+| Handler      | `bootstrap`       |
+| Memory       | 256 MB            |
+| Timeout      | 30 seconds        |
+| Architecture | `arm64`           |
 
 ### Lambda (Zip)
 
@@ -370,6 +370,7 @@ zip lambda-deployment.zip bootstrap
 ```
 
 Create function:
+
 ```bash
 aws lambda create-function \
     --function-name AWSGateKeeper \
@@ -384,80 +385,80 @@ aws lambda create-function \
 
 ## Environment Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `AWS_ACCESS_KEY_ID` | Yes (or YAML) | — | IAM access key |
-| `AWS_SECRET_ACCESS_KEY` | Yes (or YAML) | — | IAM secret key |
-| `AWS_REGION` | Yes (or YAML) | `us-east-1` | AWS region |
-| `LOG_LEVEL` | No | `INFO` | DEBUG / INFO / WARN / ERROR / VVERBOSE |
-| `SIEM_ENABLED` | No | `false` | Enable SIEM forwarding |
-| `SIEM_BACKEND` | No | `generic` | splunk / generic |
-| `SIEM_ENDPOINT` | Cond. | — | HTTP endpoint for SIEM |
-| `SIEM_TOKEN` | Cond. | — | Auth token |
-| `SIEM_TIMEOUT_MS` | No | `5000` | Request timeout in ms |
-| `SIEM_RETRIES` | No | `2` | Retry count on 5xx |
-| `AUDIT_S3_BUCKET` | No | — | S3 bucket for audit log persistence |
+| Variable                | Required      | Default     | Description                            |
+| ----------------------- | ------------- | ----------- | -------------------------------------- |
+| `AWS_ACCESS_KEY_ID`     | Yes (or YAML) | —           | IAM access key                         |
+| `AWS_SECRET_ACCESS_KEY` | Yes (or YAML) | —           | IAM secret key                         |
+| `AWS_REGION`            | Yes (or YAML) | `us-east-1` | AWS region                             |
+| `LOG_LEVEL`             | No            | `INFO`      | DEBUG / INFO / WARN / ERROR / VVERBOSE |
+| `SIEM_ENABLED`          | No            | `false`     | Enable SIEM forwarding                 |
+| `SIEM_BACKEND`          | No            | `generic`   | splunk / generic                       |
+| `SIEM_ENDPOINT`         | Cond.         | —           | HTTP endpoint for SIEM                 |
+| `SIEM_TOKEN`            | Cond.         | —           | Auth token                             |
+| `SIEM_TIMEOUT_MS`       | No            | `5000`      | Request timeout in ms                  |
+| `SIEM_RETRIES`          | No            | `2`         | Retry count on 5xx                     |
+| `AUDIT_S3_BUCKET`       | No            | —           | S3 bucket for audit log persistence    |
 
 ---
 
 ## Implementation Status
 
-| Component | Status |
-|-----------|--------|
-| Lambda handler + API Gateway proxy | Wired |
-| IAM role creation + policy generation | Wired |
-| CloudTrail event lookup (IAM + Cognito) | Wired |
-| S3 audit logger + CloudTrail bucket | Wired |
-| SIEM forwarder (Splunk/Datadog/generic) | Wired |
-| Wildcard policy detection + alerting | Wired |
-| Application audit logging (governance) | Wired |
-| Dual-mode HTTP/Lambda server | Wired |
-| Incident response + IAM quarantine | Wired |
-| GuardDuty ListFindings + GetFindings | Wired |
-| GuardDuty GetFindingsStatistics | Wired |
-| GuardDuty ArchiveFindings / UnarchiveFindings | Wired |
-| GuardDuty UpdateFindingsFeedback | Wired |
-| GuardDuty CreateSampleFindings | Wired |
-| GuardDuty Threat Intel Sets (CRUD) | Wired |
-| GuardDuty Trusted Entity Sets (CRUD) | Wired |
-| GuardDuty Publishing Destinations | Wired |
-| GuardDuty Coverage Statistics | Wired |
-| GuardDuty Member Accounts | Wired |
-| GuardDuty Organization Statistics | Wired |
-| EventBridge publishing (quarantine + scan) | Wired |
-| Security Hub integration (bidirectional) | Wired |
-| Cognito external user audit engine | Wired |
-| IR phase tracking (Detect→Recovery) | Wired |
-| SLA auto-escalation tracker | Wired |
-| KPI dashboard (MTTD/MTTC/MTTR) | Wired |
-| S3 audit lifecycle (90d Glacier, 365d expire) | Wired |
-| Quarantine rollback (DELETE endpoint) | Wired |
-| Token-bucket rate limiter | Wired |
-| Input validation (ARN, policy, detectorID) | Wired |
-| Unit tests (security package) | Wired |
-| IAM ExternalId audit rule execution | Stub |
-| Access Analyzer correlation (public access) | Wired |
-| Macie sensitive data detection | Wired |
-| Route53 DNS Firewall blocking | Wired |
-| VPC Flow Log pattern analysis | Wired |
-| DynamoDB findings storage | Wired |
-| EventBridge event publishing | Wired |
+| Component                                     | Status |
+| --------------------------------------------- | ------ |
+| Lambda handler + API Gateway proxy            | Wired  |
+| IAM role creation + policy generation         | Wired  |
+| CloudTrail event lookup (IAM + Cognito)       | Wired  |
+| S3 audit logger + CloudTrail bucket           | Wired  |
+| SIEM forwarder (Splunk/Datadog/generic)       | Wired  |
+| Wildcard policy detection + alerting          | Wired  |
+| Application audit logging (governance)        | Wired  |
+| Dual-mode HTTP/Lambda server                  | Wired  |
+| Incident response + IAM quarantine            | Wired  |
+| GuardDuty ListFindings + GetFindings          | Wired  |
+| GuardDuty GetFindingsStatistics               | Wired  |
+| GuardDuty ArchiveFindings / UnarchiveFindings | Wired  |
+| GuardDuty UpdateFindingsFeedback              | Wired  |
+| GuardDuty CreateSampleFindings                | Wired  |
+| GuardDuty Threat Intel Sets (CRUD)            | Wired  |
+| GuardDuty Trusted Entity Sets (CRUD)          | Wired  |
+| GuardDuty Publishing Destinations             | Wired  |
+| GuardDuty Coverage Statistics                 | Wired  |
+| GuardDuty Member Accounts                     | Wired  |
+| GuardDuty Organization Statistics             | Wired  |
+| EventBridge publishing (quarantine + scan)    | Wired  |
+| Security Hub integration (bidirectional)      | Wired  |
+| Cognito external user audit engine            | Wired  |
+| IR phase tracking (Detect→Recovery)           | Wired  |
+| SLA auto-escalation tracker                   | Wired  |
+| KPI dashboard (MTTD/MTTC/MTTR)                | Wired  |
+| S3 audit lifecycle (90d Glacier, 365d expire) | Wired  |
+| Quarantine rollback (DELETE endpoint)         | Wired  |
+| Token-bucket rate limiter                     | Wired  |
+| Input validation (ARN, policy, detectorID)    | Wired  |
+| Unit tests (security package)                 | Wired  |
+| IAM ExternalId audit rule execution           | Stub   |
+| Access Analyzer correlation (public access)   | Wired  |
+| Macie sensitive data detection                | Wired  |
+| Route53 DNS Firewall blocking                 | Wired  |
+| VPC Flow Log pattern analysis                 | Wired  |
+| DynamoDB findings storage                     | Wired  |
+| EventBridge event publishing                  | Wired  |
 
 ---
 
 ## Dependencies
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| `aws-sdk-go-v2` | v1.41 | AWS SDK core |
-| `aws-lambda-go` | v1.54 | Lambda runtime + API Gateway proxy |
-| `cloudtrail` | v1.56 | CloudTrail event lookup |
-| `cognitoidentityprovider` | v1.61 | Cognito user pool inspection |
-| `iam` | v1.54 | IAM role / policy management |
-| `s3` | v1.103 | S3 bucket operations |
-| `sts` | v1.43 | STS identity verification |
-| `google/uuid` | v1.6 | Unique key generation |
-| `yaml.v3` | v3.0.1 | YAML config parsing |
+| Package                   | Version | Purpose                            |
+| ------------------------- | ------- | ---------------------------------- |
+| `aws-sdk-go-v2`           | v1.41   | AWS SDK core                       |
+| `aws-lambda-go`           | v1.54   | Lambda runtime + API Gateway proxy |
+| `cloudtrail`              | v1.56   | CloudTrail event lookup            |
+| `cognitoidentityprovider` | v1.61   | Cognito user pool inspection       |
+| `iam`                     | v1.54   | IAM role / policy management       |
+| `s3`                      | v1.103  | S3 bucket operations               |
+| `sts`                     | v1.43   | STS identity verification          |
+| `google/uuid`             | v1.6    | Unique key generation              |
+| `yaml.v3`                 | v3.0.1  | YAML config parsing                |
 
 ---
 
@@ -475,3 +476,15 @@ aws lambda create-function \
 ## License
 
 MIT License. Copyright (c) 2026 ctkqiang.
+
+---
+
+如果您觉得本项目对您有帮助，欢迎请我喝杯咖啡 ☕️，您的支持是我持续维护和改进的动力！
+
+<p align="center">
+  <strong>微信扫码捐赠</strong><br/>
+  <img src="https://raw.gitcode.com/ctkqiang_sr/ctkqiang_sr/raw/main/mm_reward_qrcode_1778988737577.png" 
+       alt="微信扫码捐赠" 
+       width="240" 
+       style="border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" />
+</p>

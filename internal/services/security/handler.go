@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	aws_sdk "github.com/aws/aws-sdk-go-v2/aws"
@@ -222,6 +223,17 @@ func (o *ScanOrchestrator) deliverReport(ctx context.Context, report *model.Secu
 	if dynamoTable := getEnvOrDefault("SECURITY_AUDIT_TABLE", ""); dynamoTable != "" {
 		go SaveReportToDynamoDB(ctx, o.cfg, dynamoTable, report)
 	}
+
+		// Security Hub: notify RESOLVED for quarantined identities.
+		if o.securityHubClient == nil {
+			o.securityHubClient = aws_svc.NewSecurityHubClient(o.cfg)
+		}
+		for _, f := range report.GuardDutyFindings {
+			if f.ConfirmedCompromised {
+				go o.securityHubClient.UpdateFindingStatus(ctx, f.ID, "RESOLVED", "AWSGateKeeper quarantine applied")
+			}
+		}
+
 }
 
 // countCompromised returns the number of GuardDuty findings whose
@@ -267,26 +279,40 @@ func (o *ScanOrchestrator) runPostScanEnrichment(ctx context.Context, gdFindings
 	if len(gdFindings) == 0 {
 		return
 	}
-	// Cognito external user audit.
-	if o.cognitoAuditor == nil {
-		o.cognitoAuditor = aws_svc.NewCognitoAuditor(o.cfg)
-	}
-	go func() {
-		violations, err := o.cognitoAuditor.AuditExternalUsers(ctx, "", []string{"Admin", "SuperUser", "Operator"}, []string{})
-		if err != nil {
-			utilities.Error("security: cognito audit: %v", err)
-			return
-		}
-		if len(violations) > 0 {
-			utilities.LogProgress("security", "cognito", fmt.Sprintf("external users in privileged groups: %d", len(violations)))
-		}
-	}()
 
-	// Macie sensitive-data correlation.
+	safeGo := func(name string, fn func()) {
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					utilities.Error("security: panic in %s: %v", name, r)
+				}
+			}()
+			fn()
+		}()
+	}
+
+	cognitoPool := os.Getenv("COGNITO_USER_POOL_ID")
+	if cognitoPool != "" {
+		if o.cognitoAuditor == nil {
+			o.cognitoAuditor = aws_svc.NewCognitoAuditor(o.cfg)
+		}
+		safeGo("cognito", func() {
+			allowedDomains := stringsSplit(os.Getenv("COGNITO_ALLOWED_DOMAINS"), ",")
+			violations, err := o.cognitoAuditor.AuditExternalUsers(ctx, cognitoPool, []string{"Admin", "SuperUser", "Operator"}, allowedDomains)
+			if err != nil {
+				utilities.Error("security: cognito: %v", err)
+				return
+			}
+			if len(violations) > 0 {
+				utilities.LogProgress("security", "cognito", fmt.Sprintf("external users in privileged groups: %d", len(violations)))
+			}
+		})
+	}
+
 	if o.macieClient == nil {
 		o.macieClient = aws_svc.NewMacieClient(o.cfg)
 	}
-	go func() {
+	safeGo("macie", func() {
 		exposures, err := o.macieClient.ListSensitiveDataFindings(ctx)
 		if err != nil {
 			utilities.Error("security: macie: %v", err)
@@ -298,27 +324,33 @@ func (o *ScanOrchestrator) runPostScanEnrichment(ctx context.Context, gdFindings
 				utilities.LogProgress("security", "macie", fmt.Sprintf("CRITICAL exposure: bucket=%s type=%s", e.S3Bucket, e.SensitiveDataType))
 			}
 		}
-	}()
+	})
 
-	// DNS threat extraction from GuardDuty findings.
-	go func() {
+	safeGo("dns-threats", func() {
 		threats := aws_svc.ExtractDNSThreats(gdFindings)
 		if len(threats) > 0 {
 			utilities.LogProgress("security", "dns-threats", fmt.Sprintf("extracted %d malicious domains", len(threats)))
 		}
-	}()
+	})
 
-	// VPC Flow Log pattern analysis.
-	go func() {
+	safeGo("vpc-flow", func() {
 		pattern := aws_svc.AnalyzeVPCFlowPatterns(gdFindings)
-		if pattern.FindingCount > 0 {
-			utilities.LogProgress("security", "vpc-flow", fmt.Sprintf("%d flow findings, top port: %d", pattern.FindingCount, 0))
+		if pattern.FindingCount > 0 && len(pattern.TopPorts) > 0 {
+			utilities.LogProgress("security", "vpc-flow", fmt.Sprintf("%d findings, top port %d", pattern.FindingCount, pattern.TopPorts[0].Port))
 		}
-	}()
+	})
 
-	// EventBridge: publish scan-completed event if publisher is configured.
 	if o.eventPublisher == nil {
 		o.eventPublisher = aws_svc.NewEventPublisher(o.cfg, os.Getenv("EVENTBRIDGE_BUS_NAME"))
 	}
-	go o.eventPublisher.PublishScanCompletedEvent(ctx, "", len(gdFindings), 0, 0, 0)
+	safeGo("eventbridge", func() {
+		_ = o.eventPublisher.PublishScanCompletedEvent(ctx, "post-scan", len(gdFindings), 0, 0, 0)
+	})
+}
+
+func stringsSplit(s, sep string) []string {
+	if s == "" {
+		return nil
+	}
+	return strings.Split(s, sep)
 }
