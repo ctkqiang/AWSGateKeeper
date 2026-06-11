@@ -2,8 +2,16 @@ package test
 
 import (
 	"aws_gatekeeper/internal/model"
+	"aws_gatekeeper/internal/routes"
+	aws_svc "aws_gatekeeper/internal/services/aws"
 	"aws_gatekeeper/internal/services/security"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestBuildReport(t *testing.T) {
@@ -111,4 +119,84 @@ func TestSeverityLabel(t *testing.T) {
 		t.Fatal("report is nil")
 	}
 	t.Logf("Summary: %s", report.Summary)
+}
+
+func TestQuarantinePolicyJSON(t *testing.T) {
+	doc := model.QuarantinePolicyDocument{
+		Version: "2012-10-17",
+		Statement: []model.QuarantinePolicyStatement{
+			{Sid: "Test", Effect: "Deny", Action: "*", Resource: "*"},
+		},
+	}
+	b, _ := json.Marshal(doc)
+	if !strings.Contains(string(b), "Deny") {
+		t.Fatal("quarantine policy must contain Deny")
+	}
+}
+
+func TestIRPhaseTransitions(t *testing.T) {
+	inc := &model.IncidentRecord{DetectedAt: time.Now().UTC()}
+	inc.AdvancePhase(model.PhaseDetect)
+	inc.AdvancePhase(model.PhaseAnalysis)
+	inc.AdvancePhase(model.PhaseContainment)
+	if inc.Status != model.PhaseContainment {
+		t.Fatalf("expected CONTAINMENT, got %s", inc.Status)
+	}
+	d := inc.PhaseDuration(model.PhaseDetect, model.PhaseAnalysis)
+	if d <= 0 {
+		t.Fatal("phase duration should be positive")
+	}
+}
+
+func TestDNSThreatExtraction(t *testing.T) {
+	findings := []model.GuardDutyFinding{
+		{ID: "1", Type: "CryptoCurrency:EC2/BitcoinTool.B!DNS", Title: "bitcoin-mining-pool.com", Severity: model.SeverityHigh},
+	}
+	threats := aws_svc.ExtractDNSThreats(findings)
+	if len(threats) == 0 {
+		t.Fatal("expected DNS threats from cryptocurrency finding")
+	}
+	if threats[0].RuleAction != "BLOCK" {
+		t.Fatalf("expected BLOCK action, got %s", threats[0].RuleAction)
+	}
+}
+
+func TestVPCFlowPatterns(t *testing.T) {
+	findings := []model.GuardDutyFinding{
+		{ID: "1", Type: "Recon:EC2/Portscan", Title: "Port scan from 10.0.0.1", Severity: model.SeverityMedium},
+		{ID: "2", Type: "UnauthorizedAccess:EC2/SSHBruteForce", Title: "SSH brute force", Severity: model.SeverityHigh},
+	}
+	pattern := aws_svc.AnalyzeVPCFlowPatterns(findings)
+	if pattern.FindingCount != 2 {
+		t.Fatalf("expected 2 VPC findings, got %d", pattern.FindingCount)
+	}
+}
+
+func TestMiddlewareNoKey(t *testing.T) {
+	os.Setenv("API_KEY", "")
+	handler := routes.RequireAPIKey(func(w http.ResponseWriter, r *http.Request) {})
+	req := httptest.NewRequest("GET", "/security/scan", nil)
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+	if rec.Code != 200 {
+		t.Fatalf("expected 200 when API_KEY not set, got %d", rec.Code)
+	}
+}
+
+func TestMiddlewareWithKey(t *testing.T) {
+	os.Setenv("API_KEY", "test-secret")
+	defer os.Setenv("API_KEY", "")
+	handler := routes.RequireAPIKey(func(w http.ResponseWriter, r *http.Request) {})
+	req := httptest.NewRequest("GET", "/security/scan", nil)
+	rec := httptest.NewRecorder()
+	handler(rec, req)
+	if rec.Code != 401 {
+		t.Fatalf("expected 401 without header, got %d", rec.Code)
+	}
+	req.Header.Set("X-API-Key", "test-secret")
+	rec = httptest.NewRecorder()
+	handler(rec, req)
+	if rec.Code != 200 {
+		t.Fatalf("expected 200 with correct key, got %d", rec.Code)
+	}
 }
