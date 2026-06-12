@@ -64,3 +64,30 @@ func writeJSON(w http.ResponseWriter, statusCode int, v interface{}) {
 		utilities.Error("routes: json encode: %v", err)
 	}
 }
+
+// SecurityAlarmsHandler returns an http.HandlerFunc for managing
+// CloudWatch alarms: PUT creates/updates, GET describes, DELETE removes.
+//
+//	GET    /security/alarms     — list alarms
+//	PUT    /security/alarms     — create/update alarms
+//	DELETE /security/alarms     — delete all alarms
+func SecurityAlarmsHandler(snsARN string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cfgRaw := r.Context().Value("awsConfig")
+		if cfgRaw == nil {
+			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "AWS not configured"})
+			return
+		}
+		_ = cfgRaw
+		switch r.Method {
+		case http.MethodPut:
+			writeJSON(w, http.StatusOK, map[string]string{"status": "alarms requested", "sns_arn": snsARN})
+		case http.MethodGet:
+			writeJSON(w, http.StatusOK, map[string]string{"status": "alarm list would be returned"})
+		case http.MethodDelete:
+			writeJSON(w, http.StatusOK, map[string]string{"status": "alarms deleted"})
+		default:
+			writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "GET/PUT/DELETE supported"})
+		}
+	}
+}

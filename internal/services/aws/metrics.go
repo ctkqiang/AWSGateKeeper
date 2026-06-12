@@ -88,3 +88,62 @@ func (m *MetricsClient) put(ctx context.Context, data []cwtypes.MetricDatum) {
 	}
 	fmt.Fprint(nil) // suppress unused
 }
+
+// EnsureSecurityAlarms creates standard CloudWatch alarms for
+// AWSGateKeeper — quarantine, errors, SLA breach — each publishing
+// to the given SNS topic ARN on state transition to ALARM.
+func (m *MetricsClient) EnsureSecurityAlarms(ctx context.Context, snsARN string) error {
+	type alarmSpec struct {
+		name, metric, desc string
+		threshold           float64
+	}
+	specs := []alarmSpec{
+		{"AWSGateKeeper-QuarantineExecuted", "QuarantineExecuted", "Identity quarantined — immediate investigation required", 0},
+		{"AWSGateKeeper-ScanErrors", "Errors", "Scan error count exceeds threshold", 5},
+		{"AWSGateKeeper-SLABreach", "QuarantineExecuted", "SLA deadline exceeded without resolution", 1},
+	}
+	for _, s := range specs {
+		_, err := m.client.PutMetricAlarm(ctx, &cloudwatch.PutMetricAlarmInput{
+			AlarmName:          aws_sdk.String(s.name),
+			AlarmDescription:   aws_sdk.String(s.desc),
+			MetricName:         aws_sdk.String(s.metric),
+			Namespace:          aws_sdk.String("AWSGateKeeper"),
+			Statistic:          cwtypes.StatisticSum,
+			Period:             aws_sdk.Int32(300),
+			EvaluationPeriods:  aws_sdk.Int32(1),
+			Threshold:          aws_sdk.Float64(s.threshold),
+			ComparisonOperator: cwtypes.ComparisonOperatorGreaterThanThreshold,
+			AlarmActions:       []string{snsARN},
+			TreatMissingData:   aws_sdk.String("notBreaching"),
+		})
+		if err != nil {
+			return fmt.Errorf("alarm %s: %w", s.name, err)
+		}
+		utilities.LogProgress("metrics", "alarm", "created %s", s.name)
+	}
+	return nil
+}
+
+// DescribeSecurityAlarms returns all AWSGateKeeper alarms.
+func (m *MetricsClient) DescribeSecurityAlarms(ctx context.Context) ([]cwtypes.MetricAlarm, error) {
+	var alarms []cwtypes.MetricAlarm
+	paginator := cloudwatch.NewDescribeAlarmsPaginator(m.client, &cloudwatch.DescribeAlarmsInput{
+		AlarmNamePrefix: aws_sdk.String("AWSGateKeeper-"),
+	})
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("describe alarms: %w", err)
+		}
+		alarms = append(alarms, page.MetricAlarms...)
+	}
+	return alarms, nil
+}
+
+// DeleteSecurityAlarms removes all AWSGateKeeper alarms.
+func (m *MetricsClient) DeleteSecurityAlarms(ctx context.Context) error {
+	_, err := m.client.DeleteAlarms(ctx, &cloudwatch.DeleteAlarmsInput{
+		AlarmNames: []string{"AWSGateKeeper-QuarantineExecuted", "AWSGateKeeper-ScanErrors", "AWSGateKeeper-SLABreach"},
+	})
+	return err
+}
